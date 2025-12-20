@@ -1,0 +1,8 @@
+{
+  "name": "claude-midi-skill",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "midi-writer-js": "^2.1.4"
+  }
+}
