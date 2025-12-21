@@ -108,7 +108,7 @@ apt-get install fluidsynth
 Simply ask Claude something related to music:
 
 ```text
-Added the “midi-generation” skill. Use this to create grand classical music. I expect layered melodies as grand and beautiful as the theme songs from films like The Lord of the Rings. Once you've created the MIDI, please convert it to WAV.
+Added the “midi-generation” skill. Use it to create grand classical music. I look forward to bright, grand, and beautiful melodies layered together. Once you have the MIDI, please convert it to WAV.
 ```
 
 Claude will automatically:
