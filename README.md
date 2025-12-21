@@ -121,6 +121,10 @@ Claude will automatically:
 
 
 
+https://github.com/user-attachments/assets/34f018e5-6354-40a9-9426-15d2ccc7c39a
+
+
+
 ---
 
 ## Composition Format
