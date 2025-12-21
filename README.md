@@ -108,11 +108,7 @@ apt-get install fluidsynth
 Simply ask Claude something related to music:
 
 ```text
-Create a baroque-style piece with harpsichord and strings
-```
-
-```text
-Generate a jazz composition with piano, bass, and saxophone
+Added the “midi-generation” skill. Use this to create grand classical music. I expect layered melodies as grand and beautiful as the theme songs from films like The Lord of the Rings. Once you've created the MIDI, please convert it to WAV.
 ```
 
 Claude will automatically:
@@ -120,6 +116,10 @@ Claude will automatically:
 2. Use the provided Python scripts in `skills/` directory
 3. Generate MIDI with proper GM instruments (each track on different channel)
 4. Optionally convert to WAV
+
+### Demo
+
+
 
 ---
 
