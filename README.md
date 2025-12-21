@@ -1,41 +1,49 @@
-# 🎹 MIDI Generation Skill
+# MIDI Generation Skill
 
 **MIDI Generation Skill** is a custom **Agent Skill for Claude.ai** that enables AI agents to generate MIDI files from natural language music descriptions, with full **General MIDI instrument support** optimized for the **A320U.sf2 SoundFont**.
 
 ---
 
-## 🚀 Features
+## Features
 
-- 🎼 **Generate MIDI from text prompts**
-- 🎹 **128 GM instruments** - Full General MIDI support (A320U.sf2 compatible)
-- 🔊 **WAV export** - Convert MIDI to audio using FluidSynth
-- 🤖 **Claude Skills compatible** - Automatic skill invocation
-- 🟦 **TypeScript implementation**
+- Generate MIDI from text prompts
+- 128 GM instruments - Full General MIDI support (A320U.sf2 compatible)
+- WAV export - Convert MIDI to audio using FluidSynth
+- Claude Skills compatible - Automatic skill invocation
+- Python implementation using midiutil
 
 ---
 
-## 📦 Repository Structure
+## Repository Structure
 
 ```
 /
-├─ skills/               # Skill implementation
-│   ├─ generateMidi.ts       # MIDI file generation
-│   ├─ convertToWav.ts       # MIDI to WAV conversion (FluidSynth)
-│   ├─ normalizeComposition.ts
-│   └─ refineComposition.ts
-├─ types/
-│   ├─ music.ts              # Composition types
-│   └─ gmInstruments.ts      # 128 GM instruments list
-├─ soundfonts/           # Place A320U.sf2 here
-├─ output/               # Generated MIDI/WAV files
-├─ SKILL.md              # Claude Skill definition
-├─ package.json
+├─ skills/                   # Skill implementation (Python)
+│   ├─ generate_midi.py          # MIDI file generation
+│   ├─ convert_to_wav.py         # MIDI to WAV conversion (FluidSynth)
+│   ├─ normalize_composition.py  # Input validation
+│   └─ refine_composition.py     # Adjust composition length
+├─ midi_types/
+│   ├─ music.py                  # Composition types
+│   └─ gm_instruments.py         # 128 GM instruments list
+├─ resources/                # Music theory references
+│   ├─ music-theory.md
+│   ├─ chord-progressions.md
+│   ├─ voice-leading.md
+│   ├─ counterpoint.md
+│   ├─ modes-scales.md
+│   ├─ rhythm-patterns.md
+│   └─ orchestration.md
+├─ soundfonts/               # Place A320U.sf2 here
+├─ output/                   # Generated MIDI/WAV files
+├─ SKILL.md                  # Claude Skill definition
+├─ requirements.txt          # Python dependencies
 └─ README.md
 ```
 
 ---
 
-## 🎹 Supported Instruments
+## Supported Instruments
 
 All 128 General MIDI instruments are supported. Common examples:
 
@@ -51,16 +59,22 @@ All 128 General MIDI instruments are supported. Common examples:
 
 Simple aliases like `piano`, `guitar`, `bass`, `strings`, `brass`, `sax` are also supported.
 
-See `types/gmInstruments.ts` for the full list.
+See `midi_types/gm_instruments.py` for the full list.
 
 ---
 
-## 📘 Installation
+## Installation
 
-### 1. Install dependencies
+### 1. Install Python dependencies
 
 ```bash
-npm install
+pip install midiutil
+```
+
+Or using requirements.txt:
+
+```bash
+pip install -r requirements.txt
 ```
 
 ### 2. Download SoundFont (for WAV conversion)
@@ -80,7 +94,7 @@ apt-get install fluidsynth
 
 ---
 
-## 🚀 Usage with Claude.ai
+## Usage with Claude.ai
 
 ### 1. Enable Skills in Claude
 
@@ -103,13 +117,13 @@ Generate a jazz composition with piano, bass, and saxophone
 
 Claude will automatically:
 1. Detect that the request matches this skill
-2. Use the provided scripts in `skills/` directory
-3. Generate MIDI with proper GM instruments
+2. Use the provided Python scripts in `skills/` directory
+3. Generate MIDI with proper GM instruments (each track on different channel)
 4. Optionally convert to WAV
 
 ---
 
-## 📄 Composition Format
+## Composition Format
 
 The skill uses a structured JSON format:
 
@@ -140,45 +154,54 @@ The skill uses a structured JSON format:
 
 | Value | Duration |
 |-------|----------|
-| `"1"` | Whole note |
-| `"2"` | Half note |
-| `"4"` | Quarter note |
-| `"8"` | Eighth note |
-| `"16"` | Sixteenth note |
+| `"1"` | Whole note (4 beats) |
+| `"2"` | Half note (2 beats) |
+| `"d2"` | Dotted half (3 beats) |
+| `"4"` | Quarter note (1 beat) |
+| `"d4"` | Dotted quarter (1.5 beats) |
+| `"8"` | Eighth note (0.5 beats) |
+| `"16"` | Sixteenth note (0.25 beats) |
 
 ---
 
-## 🔧 API Reference
+## API Reference
 
-### `generateMidi(composition: Composition): string`
+### `generate_midi(composition: Composition) -> str`
 
 Generate a MIDI file from a Composition object.
 
-- **Input**: Composition JSON with title, bpm, and tracks
+- **Input**: Composition object with title, bpm, and tracks
 - **Output**: Path to the generated `.mid` file
 
-### `convertToWav(midiPath: string, options?: ConvertOptions): string`
+### `generate_midi_from_dict(data: dict) -> str`
+
+Generate a MIDI file from a dictionary.
+
+- **Input**: Dictionary with title, bpm, and tracks
+- **Output**: Path to the generated `.mid` file
+
+### `convert_to_wav(midi_path: str, options: ConvertOptions) -> str`
 
 Convert a MIDI file to WAV using FluidSynth and A320U.sf2.
 
 - **Input**: Path to MIDI file
 - **Output**: Path to the generated `.wav` file
 
-### `normalizeComposition(input: any): Composition`
+### `normalize_composition(data: Any) -> Composition`
 
 Validate and normalize user input into a proper Composition object.
 
-### `refineComposition(composition: Composition): Composition`
+### `refine_composition(composition: Composition, min_notes: int) -> Composition`
 
-Adjust composition length (ensures minimum 16 notes per track).
+Adjust composition length (ensures minimum notes per track).
 
-### `resolveInstrument(name: string): number`
+### `resolve_instrument(name: str) -> int`
 
 Convert instrument name to GM program number (0-127).
 
 ---
 
-## 📌 Example Prompts
+## Example Prompts
 
 ```text
 Create a calm ambient piece with pad synths and strings
@@ -194,24 +217,28 @@ Compose a classical piece with violin, cello, and harpsichord
 
 ---
 
-## 🛠️ Development Notes
+## Development Notes
 
 - `SKILL.md` defines **when and how Claude should use this skill**
-- The `skills/` directory contains **pre-built scripts that Claude must use**
+- The `skills/` directory contains **pre-built Python scripts that Claude must use**
 - Claude should **NOT write custom code** - it should use the provided functions
 - All instruments are GM-compatible for A320U.sf2 playback
+- **Each track is assigned to a different MIDI channel** for proper multi-instrument playback
 
 ---
 
-## 📜 License
+## License
 
 MIT License
 
+See LICENSE.txt for details including third-party licenses.
+
 ---
 
-## 🔗 References
+## References
 
 - [A320U SoundFont](https://musical-artifacts.com/artifacts/5906)
 - [General MIDI Specification](https://www.midi.org/specifications/midi1-specifications/general-midi-specifications)
 - [Claude Agent Skills](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview)
 - [FluidSynth](https://www.fluidsynth.org/)
+- [MIDIUtil](https://github.com/MarkCWirt/MIDIUtil)

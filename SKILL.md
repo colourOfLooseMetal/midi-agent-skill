@@ -1,90 +1,159 @@
 ---
 name: midi-generation
-description: Generate MIDI files with GM instruments and convert to WAV using A320U SoundFont
+description: Generate MIDI files with GM instruments and music theory. Use when creating music, composing melodies, or generating MIDI files.
 license: MIT
 ---
 
 # MIDI Generation Skill
 
-This skill provides pre-built TypeScript functions to generate MIDI files. **You MUST use the provided scripts in `skills/` directory. Do NOT write your own MIDI generation code.**
+Generate MIDI files with proper music theory. **Use the provided Python scripts in `skills/`. Do NOT write custom code.**
 
 ## Important Rules
 
-1. **ALWAYS use the provided scripts** in `skills/` directory
-2. **NEVER write custom Python or JavaScript code** for MIDI generation
-3. **Read the script files first** to understand the API before using them
-4. **Use the exact function signatures** defined in the scripts
+1. **Use provided scripts** in `skills/` directory (Python)
+2. **Never write custom Python/JS** for MIDI generation
+3. **Install dependencies first**: `pip install midiutil`
+4. **Consult music theory resources** when needed (see below)
 
-## Available Scripts
+## Quick Dissonance Rules
 
-### 1. `skills/generateMidi.ts` - Generate MIDI file
+**Always follow these to avoid harsh sounds:**
 
-When the user wants to create a MIDI file, read `skills/generateMidi.ts` and use the `generateMidi` function.
+1. **Never play notes 1 semitone apart** (C+C#, E+F, B+C)
+2. **Bass plays root or fifth** of the chord
+3. **Spread voices across octaves** (don't cluster)
+4. **Each track uses different MIDI channel** (automatic)
 
-```typescript
-import { generateMidi } from "./skills/generateMidi.js";
+---
 
-const composition = {
-  title: "My Song",
-  bpm: 120,
-  tracks: [
-    {
-      instrument: "acoustic-grand-piano",
-      notes: [
-        { pitch: "C4", duration: "4" },
-        { pitch: "E4", duration: "4" }
-      ]
-    }
-  ]
-};
+## Music Theory Resources (Read When Needed)
 
-const midiPath = generateMidi(composition);
-```
+**Only read the resource that matches your current task:**
 
-### 2. `skills/normalizeComposition.ts` - Validate input
+| When you need... | Read this file |
+|------------------|----------------|
+| Scales, chords, intervals, cadences | [resources/music-theory.md](resources/music-theory.md) |
+| Chord progressions by genre | [resources/chord-progressions.md](resources/chord-progressions.md) |
+| Avoiding dissonance, voice spacing | [resources/voice-leading.md](resources/voice-leading.md) |
+| **Classical/Baroque counterpoint** | [resources/counterpoint.md](resources/counterpoint.md) |
+| Modes (Dorian, Phrygian, etc.) | [resources/modes-scales.md](resources/modes-scales.md) |
+| Rhythm, time signatures, syncopation | [resources/rhythm-patterns.md](resources/rhythm-patterns.md) |
+| Instrument ranges, combinations | [resources/orchestration.md](resources/orchestration.md) |
 
-Before generating MIDI, read `skills/normalizeComposition.ts` and use `normalizeComposition` to validate user input.
+### When to Read Each Resource
 
-### 3. `skills/refineComposition.ts` - Adjust length
+- **Pop/Rock song** → chord-progressions.md + voice-leading.md
+- **Classical piece** → counterpoint.md + orchestration.md
+- **Jazz composition** → modes-scales.md + chord-progressions.md
+- **Film score** → orchestration.md + modes-scales.md
+- **Any composition** → Always check voice-leading.md for dissonance
 
-Read `skills/refineComposition.ts` and use `refineComposition` to ensure the composition has enough notes.
-
-### 4. `skills/convertToWav.ts` - Convert to audio
-
-When the user wants audio output, read `skills/convertToWav.ts` and use `convertToWav` with FluidSynth.
-
-### 5. `types/gmInstruments.ts` - Instrument list
-
-When selecting instruments, read `types/gmInstruments.ts` to see all 128 GM instruments compatible with A320U.sf2.
+---
 
 ## Workflow
 
-When the user requests music generation:
+1. **Install dependencies**: `pip install midiutil`
+2. **Identify genre/style** → Select appropriate resources
+3. **Read relevant theory** → Only the files you need
+4. **Choose instruments** → See [midi_types/gm_instruments.py](midi_types/gm_instruments.py)
+5. **Create composition JSON**
+6. **Use scripts** to generate MIDI
 
-1. **Read `types/gmInstruments.ts`** to select appropriate instruments
-2. **Read `skills/normalizeComposition.ts`** and call `normalizeComposition(input)`
-3. **Read `skills/refineComposition.ts`** and call `refineComposition(composition)`
-4. **Read `skills/generateMidi.ts`** and call `generateMidi(composition)`
-5. If audio is requested, **read `skills/convertToWav.ts`** and call `convertToWav(midiPath)`
+## Python Scripts
 
-## Supported Instruments
+| Script | Purpose |
+|--------|---------|
+| `skills/generate_midi.py` | Generate MIDI (auto-assigns channels per track) |
+| `skills/normalize_composition.py` | Validate and normalize input |
+| `skills/refine_composition.py` | Adjust length, extend tracks |
+| `skills/convert_to_wav.py` | MIDI → WAV (requires FluidSynth) |
 
-Read `types/gmInstruments.ts` for the full list. Common aliases:
+## Usage Example
 
-- `piano` → acoustic-grand-piano
-- `guitar` → acoustic-guitar-nylon
-- `bass` → acoustic-bass
-- `strings` → string-ensemble-1
-- `brass` → brass-section
-- `sax` → alto-sax
+```python
+import sys
+sys.path.insert(0, '/path/to/midi-skill')
 
-## Prerequisites
+from skills.generate_midi import generate_midi_from_dict
 
-- Node.js with TypeScript support
-- For WAV: FluidSynth (`brew install fluidsynth`) + A320U.sf2 in `soundfonts/`
+composition = {
+    "title": "My Song",
+    "bpm": 120,
+    "tracks": [
+        {
+            "instrument": "acoustic-grand-piano",
+            "notes": [
+                {"pitch": "C4", "duration": "4"},
+                {"pitch": "E4", "duration": "4"},
+                {"pitch": "G4", "duration": "4"},
+                {"pitch": "C5", "duration": "2"}
+            ]
+        },
+        {
+            "instrument": "acoustic-bass",
+            "notes": [
+                {"pitch": "C2", "duration": "2"},
+                {"pitch": "G2", "duration": "2"}
+            ]
+        }
+    ]
+}
+
+midi_path = generate_midi_from_dict(composition)
+print(f"Generated: {midi_path}")
+```
+
+## Composition Format
+
+```json
+{
+  "title": "My Song",
+  "bpm": 120,
+  "tracks": [
+    {
+      "instrument": "acoustic-grand-piano",
+      "notes": [
+        { "pitch": "C4", "duration": "4" },
+        { "pitch": "E4", "duration": "4" }
+      ]
+    },
+    {
+      "instrument": "acoustic-bass",
+      "notes": [
+        { "pitch": "C2", "duration": "2" }
+      ]
+    }
+  ]
+}
+```
+
+## Duration Notation
+
+| Value | Note |
+|-------|------|
+| `1` | Whole note (4 beats) |
+| `2` | Half note (2 beats) |
+| `d2` | Dotted half (3 beats) |
+| `4` | Quarter note (1 beat) |
+| `d4` | Dotted quarter (1.5 beats) |
+| `8` | Eighth note (0.5 beats) |
+| `16` | Sixteenth note (0.25 beats) |
+
+## Instrument Aliases
+
+| Alias | GM Instrument |
+|-------|---------------|
+| `piano` | acoustic-grand-piano |
+| `guitar` | acoustic-guitar-nylon |
+| `bass` | acoustic-bass |
+| `strings` | string-ensemble-1 |
+| `brass` | brass-section |
+| `sax` | alto-sax |
+
+Full list: [midi_types/gm_instruments.py](midi_types/gm_instruments.py)
 
 ## Notes
 
-- Output files are saved to `output/` directory
-- All 128 GM instruments are supported
-- Instrument names are case-insensitive
+- Max 15 melodic tracks (MIDI channels 0-8, 10-15; ch.9 = drums)
+- Output: `output/` directory
+- WAV requires: FluidSynth + A320U.sf2 in `soundfonts/`

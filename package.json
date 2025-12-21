@@ -1,8 +1,15 @@
 {
   "name": "claude-midi-skill",
+  "version": "2.0.0",
+  "description": "MIDI Generation Skill for Claude.ai using Python/midiutil",
   "private": true,
-  "type": "module",
-  "dependencies": {
-    "midi-writer-js": "^2.1.4"
-  }
+  "scripts": {
+    "test": "python -m pytest",
+    "generate": "python skills/generate_midi.py"
+  },
+  "engines": {
+    "python": ">=3.8"
+  },
+  "keywords": ["midi", "music", "claude", "skill", "ai"],
+  "license": "MIT"
 }
