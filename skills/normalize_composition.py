@@ -74,9 +74,24 @@ def normalize_composition(data: Any) -> Composition:
             if pitch is None or duration is None:
                 continue
 
+            # Preserve chord pitches (a list, or a "+"-joined string) as-is;
+            # only coerce a bare scalar pitch to str.
+            if isinstance(pitch, (list, tuple)):
+                pitch = [str(p) for p in pitch]
+            else:
+                pitch = str(pitch)
+
+            velocity = n.get("velocity")
+            if velocity is not None:
+                try:
+                    velocity = int(velocity)
+                except (ValueError, TypeError):
+                    velocity = None
+
             notes.append(Note(
-                pitch=str(pitch),
-                duration=str(duration)
+                pitch=pitch,
+                duration=str(duration),
+                velocity=velocity
             ))
 
         if notes:  # Only add tracks with notes

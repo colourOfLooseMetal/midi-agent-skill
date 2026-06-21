@@ -33,6 +33,16 @@ DURATION_MAP = {
 }
 
 
+# Pitch sentinels that mean "rest" (silence). A rest advances the time cursor by
+# its duration without sounding a note. Matched case-insensitively after stripping.
+REST_TOKENS = {"r", "rest", "-"}
+
+
+def is_rest(pitch_str: str) -> bool:
+    """Return True if a Note's pitch denotes a rest rather than an audible pitch."""
+    return isinstance(pitch_str, str) and pitch_str.strip().lower() in REST_TOKENS
+
+
 def parse_pitch(pitch_str: str) -> int:
     """
     Convert pitch string to MIDI note number.
@@ -74,6 +84,40 @@ def parse_pitch(pitch_str: str) -> int:
         midi_note -= 1
 
     return max(0, min(127, midi_note))
+
+
+def parse_pitches(pitch) -> list:
+    """
+    Convert a pitch spec into a list of MIDI note numbers (a chord).
+
+    Accepts a single pitch ("C4"), a "+"-joined chord string ("C2+G2+C3"), or a
+    list of pitches (["C2", "G2", "C3"]). All resulting notes are sounded together
+    on one track -- this is how a power chord lives in a single track rather than
+    being faked with parallel tracks. Reuses parse_pitch for each token.
+    """
+    if isinstance(pitch, (list, tuple)):
+        tokens = [str(p) for p in pitch]
+    else:
+        tokens = str(pitch).split("+")
+    return [parse_pitch(tok.strip()) for tok in tokens if tok.strip()]
+
+
+def parse_time_signature(time_signature: str):
+    """
+    Parse a "num/den" time signature into midiutil's (numerator, denominator_power).
+
+    midiutil expresses the denominator as a power of two: 4/4 -> (4, 2) since 2**2=4,
+    6/8 -> (6, 3), 2/2 -> (2, 1). Falls back to 4/4 on bad input.
+    """
+    try:
+        num_str, den_str = time_signature.split("/")
+        numerator = int(num_str)
+        denominator = int(den_str)
+        if numerator > 0 and denominator > 0 and (denominator & (denominator - 1)) == 0:
+            return numerator, denominator.bit_length() - 1
+    except (ValueError, AttributeError):
+        pass
+    return 4, 2  # default 4/4
 
 
 def parse_duration(duration_str: str) -> float:
@@ -135,9 +179,14 @@ def generate_midi(composition: Composition) -> str:
         track_name = track.instrument or f"Track {track_idx + 1}"
         midi.addTrackName(track_idx, 0, track_name)
 
-        # Set tempo on first track
+        # Set tempo, time signature, and the tempo map on the first track.
         if track_idx == 0:
             midi.addTempo(track_idx, 0, composition.bpm)
+            numerator, denom_power = parse_time_signature(composition.time_signature)
+            midi.addTimeSignature(track_idx, 0, numerator, denom_power, 24)
+            # Tempo map: half-time feel, accel/rit, per-section tempo shifts.
+            for change in composition.tempo_map:
+                midi.addTempo(track_idx, change.beat, change.bpm)
 
         # Set instrument (program change)
         program = resolve_instrument(track.instrument) if track.instrument else 0
@@ -147,18 +196,30 @@ def generate_midi(composition: Composition) -> str:
         time = 0.0  # Current time in beats
         for note in track.notes:
             try:
-                pitch = parse_pitch(note.pitch)
                 duration = parse_duration(note.duration)
-                velocity = 100  # Default velocity
 
-                midi.addNote(
-                    track=track_idx,
-                    channel=channel,
-                    pitch=pitch,
-                    time=time,
-                    duration=duration,
-                    volume=velocity
-                )
+                # A rest advances the cursor without emitting a note, leaving
+                # true silence. Check before parse_pitch (which would raise on a
+                # rest sentinel and skip the note WITHOUT advancing time).
+                if is_rest(note.pitch):
+                    time += duration
+                    continue
+
+                # A chord = several pitches sounded together: one addNote per tone
+                # at the same time and duration, then advance the cursor once.
+                pitches = parse_pitches(note.pitch)
+                velocity = note.velocity if note.velocity is not None else 100
+                velocity = max(1, min(127, int(velocity)))
+
+                for pitch in pitches:
+                    midi.addNote(
+                        track=track_idx,
+                        channel=channel,
+                        pitch=pitch,
+                        time=time,
+                        duration=duration,
+                        volume=velocity
+                    )
 
                 time += duration
             except Exception as e:
@@ -196,26 +257,33 @@ def generate_midi_from_dict(data: dict) -> str:
 if __name__ == "__main__":
     import json
 
-    # Example usage
+    # Example usage -- showcases chords-in-one-track, per-note velocity, and a
+    # tempo map. The piano plays triads as single "C4+E4+G4" chord events; the
+    # bass uses accents (velocity); the tempo eases from 120 down to 96.
     example = {
         "title": "Test Multi-Instrument",
         "bpm": 120,
+        "time_signature": "4/4",
+        "tempo_map": [
+            {"beat": 0, "bpm": 120},
+            {"beat": 8, "bpm": 96}
+        ],
         "tracks": [
             {
                 "instrument": "acoustic-grand-piano",
                 "notes": [
-                    {"pitch": "C4", "duration": "4"},
-                    {"pitch": "E4", "duration": "4"},
-                    {"pitch": "G4", "duration": "4"},
-                    {"pitch": "C5", "duration": "2"}
+                    {"pitch": "C4+E4+G4", "duration": "4"},
+                    {"pitch": "D4+F4+A4", "duration": "4"},
+                    {"pitch": "E4+G4+B4", "duration": "4"},
+                    {"pitch": "C4+E4+G4+C5", "duration": "2"}
                 ]
             },
             {
                 "instrument": "acoustic-bass",
                 "notes": [
-                    {"pitch": "C2", "duration": "2"},
-                    {"pitch": "G2", "duration": "2"},
-                    {"pitch": "C2", "duration": "1"}
+                    {"pitch": "C2", "duration": "2", "velocity": 110},
+                    {"pitch": "G2", "duration": "2", "velocity": 80},
+                    {"pitch": "C2", "duration": "1", "velocity": 100}
                 ]
             },
             {

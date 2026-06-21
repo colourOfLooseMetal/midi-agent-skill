@@ -8,7 +8,9 @@
 
 - Generate MIDI from text prompts
 - 128 GM instruments - Full General MIDI support (A320U.sf2 compatible)
+- Chords in one track, per-note velocity, tempo maps, and time signatures
 - WAV export - Convert MIDI to audio using FluidSynth
+- Guitar Pro → style cards - analyze real `.gp3/.gp4/.gp5/.gp` tabs into reusable style guides
 - Claude Skills compatible - Automatic skill invocation
 - Python implementation using midiutil
 
@@ -26,6 +28,10 @@
 ├─ midi_types/
 │   ├─ music.py                  # Composition types
 │   └─ gm_instruments.py         # 128 GM instruments list
+├─ analysis/                 # Guitar Pro → style card pipeline
+│   ├─ parse_guitarpro.py        # GP file → normalized IR
+│   ├─ analyze.py                # IR → style features
+│   └─ style_card.py             # features → resources/styles/*.md
 ├─ resources/                # Music theory references
 │   ├─ music-theory.md
 │   ├─ chord-progressions.md
@@ -33,9 +39,11 @@
 │   ├─ counterpoint.md
 │   ├─ modes-scales.md
 │   ├─ rhythm-patterns.md
-│   └─ orchestration.md
+│   ├─ orchestration.md
+│   └─ styles/                   # Auto-generated style cards from real songs
 ├─ soundfonts/               # Place A320U.sf2 here
 ├─ output/                   # Generated MIDI/WAV files
+├─ analyze_song.py           # Driver: GP file → style card
 ├─ SKILL.md                  # Claude Skill definition
 ├─ requirements.txt          # Python dependencies
 └─ README.md
@@ -165,6 +173,33 @@ The skill uses a structured JSON format:
 | `"d4"` | Dotted quarter (1.5 beats) |
 | `"8"` | Eighth note (0.5 beats) |
 | `"16"` | Sixteenth note (0.25 beats) |
+
+**Rests:** a note with `"pitch": "R"` (also `"rest"` or `"-"`) is a **rest** — silence
+for its `duration`. Use it to leave gaps, delay a track's entrance, or drop an
+instrument out and bring it back.
+
+### Chords, dynamics, tempo & meter (optional)
+
+All optional and backward compatible — omit them for the classic behavior.
+
+| Field | Where | Example | Effect |
+|-------|-------|---------|--------|
+| Chord `pitch` | per note | `{ "pitch": "C2+G2+C3", "duration": "4" }` | stacked notes sounded together in one track (power chords/triads) |
+| `velocity` | per note | `{ "pitch": "C2", "duration": "4", "velocity": 110 }` | accents/dynamics (1–127, default 100) |
+| `tempo_map` | composition | `"tempo_map": [{ "beat": 0, "bpm": 120 }, { "beat": 32, "bpm": 96 }]` | tempo changes (half-time, accel/rit) |
+| `time_signature` | composition | `"time_signature": "7/8"` | written into the MIDI as bar structure |
+
+### Style cards from real songs
+
+Analyze a Guitar Pro tab into a reusable style card under `resources/styles/`:
+
+```bash
+pip install PyGuitarPro                    # for .gp3/.gp4/.gp5; modern .gp uses stdlib
+python analyze_song.py "path/to/song.gp4"  # -> resources/styles/<artist-title>.md
+```
+
+The card reports measured tempo, key/scale, meter, voicing, duration palette, and
+repetition, with a "How to apply in this skill" section. `.gpx` (GP6) is not supported.
 
 ---
 

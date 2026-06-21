@@ -39,6 +39,7 @@ Generate MIDI files with proper music theory. **Use the provided Python scripts 
 | Modes (Dorian, Phrygian, etc.) | [resources/modes-scales.md](resources/modes-scales.md) |
 | Rhythm, time signatures, syncopation | [resources/rhythm-patterns.md](resources/rhythm-patterns.md) |
 | Instrument ranges, combinations | [resources/orchestration.md](resources/orchestration.md) |
+| **Real-song style cards** (measured from Guitar Pro tabs) | [resources/styles/](resources/styles/) |
 
 ### When to Read Each Resource
 
@@ -46,6 +47,8 @@ Generate MIDI files with proper music theory. **Use the provided Python scripts 
 - **Classical piece** → counterpoint.md + orchestration.md
 - **Jazz composition** → modes-scales.md + chord-progressions.md
 - **Film score** → orchestration.md + modes-scales.md
+- **In a specific artist's/song's style** → read or generate a card in `resources/styles/`
+  (see *Style cards from real songs* below)
 - **Any composition** → Always check voice-leading.md for dissonance
 
 ---
@@ -127,6 +130,54 @@ print(f"Generated: {midi_path}")
 }
 ```
 
+## Chords, Dynamics, Tempo & Meter
+
+These optional fields make output less mechanical. All are backward compatible —
+omit them and you get the old behavior (mono notes, velocity 100, single tempo, 4/4).
+
+- **Chords in ONE track.** A note's `pitch` may be a chord: a `"+"`-joined string
+  (`"C2+G2+C3"`) or a list (`["C2","G2","C3"]`). All tones share one start and
+  duration. **This is the right way to write power chords and triads** — *not*
+  parallel tracks. Only use separate tracks when voices differ in *instrument or
+  rhythm*. (A power chord = root, +7 fifth, +12 octave: `"C2+G2+C3"`.)
+- **Per-note `velocity`** (1–127, default 100): `{"pitch":"C2","duration":"4","velocity":110}`.
+  Use it for accents and dynamics — ghost ~40, normal ~80, accent ~110, slam ~120.
+- **`tempo_map`**: a list of `{"beat": <offset>, "bpm": <n>}` for half-time feel,
+  accel/rit, or per-section tempo shifts. `bpm` stays the initial tempo.
+- **`time_signature`** (default `"4/4"`): written into the MIDI so the file carries
+  bar structure. Supports odd meters (`"7/8"`, `"6/8"`).
+
+```json
+{
+  "title": "Heavy Riff", "bpm": 70, "time_signature": "4/4",
+  "tempo_map": [{"beat": 0, "bpm": 70}, {"beat": 32, "bpm": 58}],
+  "tracks": [
+    { "instrument": "distortion-guitar", "notes": [
+      { "pitch": "C2+G2+C3", "duration": "2", "velocity": 115 },
+      { "pitch": "R", "duration": "4" },
+      { "pitch": "Gb2+Db3+Gb3", "duration": "2", "velocity": 100 }
+    ]}
+  ]
+}
+```
+
+## Style cards from real songs
+
+To compose in a real artist's or song's style, ground it in measured facts instead
+of a generic template. Point the analysis pipeline at a **Guitar Pro** file (a far
+richer source than MIDI — it has bars, a tempo map, exact durations, and tab
+voicings):
+
+```bash
+pip install PyGuitarPro            # only for .gp3/.gp4/.gp5; modern .gp uses stdlib
+python analyze_song.py "path/to/song.gp4"
+```
+
+This writes a **style card** to `resources/styles/<artist-title>.md` — tempo, key/
+scale, meter, voicing, duration palette, repetition, and a "How to apply in this
+skill" section. Read that card, then compose from its numbers. Supported inputs:
+`.gp3/.gp4/.gp5/.gtp` (PyGuitarPro) and `.gp` (GP7/8, stdlib). `.gpx` (GP6) is not.
+
 ## Duration Notation
 
 | Value | Note |
@@ -138,6 +189,13 @@ print(f"Generated: {midi_path}")
 | `d4` | Dotted quarter (1.5 beats) |
 | `8` | Eighth note (0.5 beats) |
 | `16` | Sixteenth note (0.25 beats) |
+
+**Rests:** set a note's `"pitch"` to `"R"` (also `"rest"` or `"-"`) to produce a
+**rest** — silence for the given `duration`. Use it to leave gaps, stage a late
+entrance (a leading rest), or drop an instrument out mid-track and bring it back.
+A rest is only realized if a note follows it later in the same track; a *trailing*
+rest (none after it) is dropped, so it won't pad a track's length or add silence
+after the last note.
 
 ## Instrument Aliases
 

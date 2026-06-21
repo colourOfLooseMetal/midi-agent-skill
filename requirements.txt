@@ -3,6 +3,11 @@
 # Required: MIDI file generation
 midiutil==1.2.1
 
+# Optional: Guitar Pro analysis pipeline (analysis/, analyze_song.py).
+# Only needed to read .gp3/.gp4/.gp5 tabs; modern .gp (GP7/8) uses the stdlib.
+# Imported lazily, so core MIDI generation works without it installed.
+PyGuitarPro==0.11
+
 # Optional: For type checking during development
 # mypy>=1.0.0
 # types-dataclasses>=0.6.0

@@ -34,7 +34,7 @@ def refine_composition(composition: Composition, min_notes: int = 16) -> Composi
                 for note in base:
                     if len(track.notes) >= min_notes:
                         break
-                    track.notes.append(Note(pitch=note.pitch, duration=note.duration))
+                    track.notes.append(Note(pitch=note.pitch, duration=note.duration, velocity=note.velocity))
 
     return composition
 
@@ -87,7 +87,7 @@ def extend_composition(composition: Composition, target_bars: int = 8, beats_per
             for note in base:
                 if current_beats >= target_beats:
                     break
-                track.notes.append(Note(pitch=note.pitch, duration=note.duration))
+                track.notes.append(Note(pitch=note.pitch, duration=note.duration, velocity=note.velocity))
                 current_beats += _duration_to_beats(note.duration)
 
     return composition
