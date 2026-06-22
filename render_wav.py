@@ -18,6 +18,9 @@ REPO = Path(__file__).parent
 sys.path.insert(0, str(REPO))
 
 GAIN = float(sys.argv[1]) if len(sys.argv) > 1 else 0.4
+# Optional 2nd arg: which MIDI in output/ to render (title stem or filename).
+# Defaults to the original stoner-doom example for backward compatibility.
+MIDI_NAME = sys.argv[2] if len(sys.argv) > 2 else "Stoner_Doom_-_Riff_Worship"
 
 # Locate the bundled FluidSynth and expose it on PATH for the skill's subprocess.
 hits = glob.glob(os.path.join(os.environ["LOCALAPPDATA"], "fluidsynth", "**", "fluidsynth.exe"),
@@ -31,7 +34,8 @@ from skills.convert_to_wav import convert_to_wav, ConvertOptions, get_conversion
 status = get_conversion_status()
 print("Conversion ready:", status.ready, "-", status.message)
 
-midi = str(REPO / "output" / "Stoner_Doom_-_Riff_Worship.mid")
+midi = str(REPO / "output" / (MIDI_NAME[:-4] if MIDI_NAME.endswith(".mid") else MIDI_NAME))
+midi += "" if midi.endswith(".mid") else ".mid"
 opts = ConvertOptions(gain=GAIN, reverb=True, chorus=False)
 wav = convert_to_wav(midi, opts)
 print("WAV written:", wav)

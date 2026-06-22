@@ -60,11 +60,17 @@ test suite, linter, or build step** in this repo.
 
 ## Hard constraints (these bite — design around them up front)
 
-- **No GM drum kit.** The generator gives every track its own *melodic* channel and
-  **deliberately skips channel 9** (GM percussion). There is no path to a real kit
-  through this skill; the `drums` alias resolves to `synth-drum` (program 118), a
-  *pitched* voice. Build rhythm/weight from melodic instruments, or extend
-  `generate_midi.py` to place a track on channel 9 if you truly need drums.
+- **Real drums need the `drum-kit` track type.** Melodic tracks each get their own
+  channel and **skip channel 9** (GM percussion). For a real kit, give a track the
+  instrument `drum-kit` (also `percussion`/`kit`/...): the generator pins it to
+  channel 9 and reads its note "pitches" as **drum names** — `kick`, `snare`,
+  `hihat-open`/`-closed`, `crash`, `ride`, `tom-low`/`-mid`/`-high`, ... — mapped to
+  GM kit notes (stack simultaneous hits like a chord, `"kick+crash"`; `R` still
+  rests). See `midi_types/gm_percussion.py`. Note the older `drums` *alias* is
+  separate and still resolves to the *pitched* `synth-drum` voice (program 118) — use
+  `drum-kit`, not `drums`, for an actual kit. `compose_doom_procession.py` is the
+  worked example (a half-time groove authored on a 16th grid). You can still build
+  rhythm/weight from melodic instruments instead if you prefer.
 - **Rests give true silence.** A pitch of `R` (`rest`/`-`) is a rest — it advances time by
   its `duration` without sounding, so you *can* drop an instrument out for a middle section
   and bring it back, or start a track with a rest to stage a late entrance (every track
@@ -105,7 +111,17 @@ Three layers, read in this order to get productive:
 
 - `skills/` — the callable functions (the skill's behavior): `generate_midi.py`
   (dict → `.mid`), `convert_to_wav.py` (`.mid` → `.wav`), `normalize_composition.py`
-  (coerce/clean messy input), `refine_composition.py` (pad/extend short tracks).
+  (coerce/clean messy input), `refine_composition.py` (pad/extend short tracks),
+  `export_guitarpro.py` (dict → `.gp3`/`.gp4`/`.gp5`, viewable/playable in TuxGuitar
+  or Guitar Pro — `export_guitarpro_from_dict(data, fmt="gp5")`; the reverse
+  direction of the analysis pipeline below, sharing its optional PyGuitarPro
+  dependency). It's not a real-tab fingering generator — it synthesizes a
+  per-track tuning wide enough to place every pitch/chord used, so frets won't
+  look idiomatic; only pitch and rhythm are guaranteed correct. Measures cut at
+  the nominal time-signature length wherever that lands on a note boundary shared
+  by every track (true by construction for this repo's bar-aligned `compose_*.py`
+  drivers); a note that would straddle the boundary just makes that one bar
+  longer instead of being split, so the file is always structurally valid.
 - `midi_types/` — the data model: `music.py` (`Composition`/`Track`/`Note` dataclasses
   + dict round-tripping) and `gm_instruments.py` (the 128 GM name→program map +
   `resolve_instrument`).
@@ -117,7 +133,7 @@ Three layers, read in this order to get productive:
 - `analysis/` — the **Guitar Pro → style card** pipeline (a process tool, not part of the
   packaged skill): `parse_guitarpro.py` (GP file → format-agnostic IR; PyGuitarPro for
   `.gp3/.gp4/.gp5`, stdlib zip+XML for modern `.gp`), `analyze.py` (IR → tempo/rhythm/
-  harmony/voicing/structure features), `style_card.py` (features → `resources/styles/*.md`).
+  harmony/voicing/structure/percussion features), `style_card.py` (features → `resources/styles/*.md`).
   Driven by `analyze_song.py` at the repo root. **PyGuitarPro** is an optional dependency
   (lazy-imported; only needed for `.gp3/.gp4/.gp5`). `.gpx` (GP6) is unsupported.
 

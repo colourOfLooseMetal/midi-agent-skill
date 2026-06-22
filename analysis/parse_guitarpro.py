@@ -21,11 +21,14 @@ later be turned back into a composition dict (style transfer) -- a future extens
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+_DRUM_NAME_RE = re.compile(r"drum|percussion|\bkit\b", re.IGNORECASE)
 
 
 # --- IR ---------------------------------------------------------------------
@@ -118,7 +121,9 @@ def _from_pyguitarpro(path: str) -> GPSong:
 
     tracks: List[GPTrack] = []
     for ti, t in enumerate(song.tracks):
-        is_perc = getattr(t, "isPercussionTrack", False) or t.channel.channel == 9
+        is_perc = (getattr(t, "isPercussionTrack", False)
+                   or t.channel.channel == 9
+                   or bool(_DRUM_NAME_RE.search(t.name or "")))
         tuning = [s.value for s in t.strings]
         measures: List[GPMeasure] = []
         abs_beat = 0.0
@@ -212,7 +217,14 @@ def _from_gpif(path: str) -> GPSong:
                 base *= den / num
         return base
 
-    def note_midi(note_el, tuning) -> Optional[int]:
+    def note_midi(note_el, tuning, artic_midi) -> Optional[int]:
+        # Percussion notes carry a flat index into the track's drum-kit articulation
+        # list (built below) instead of a String/Fret/Midi property.
+        artic_el = note_el.find("InstrumentArticulation")
+        if artic_el is not None and artic_el.text is not None:
+            idx = int(artic_el.text)
+            if 0 <= idx < len(artic_midi):
+                return artic_midi[idx]
         props = {p.get("name"): p for p in note_el.findall("./Properties/Property")}
         if "Midi" in props:
             return int(_text(props["Midi"], "Number", "0"))
@@ -233,9 +245,18 @@ def _from_gpif(path: str) -> GPSong:
         gm = int(prog_el.text) if prog_el is not None and prog_el.text else 0
         pitches_el = tr.find(".//Tuning/Pitches")
         tuning_lh = [int(x) for x in pitches_el.text.split()] if pitches_el is not None and pitches_el.text else []
-        is_perc = tr.find(".//InstrumentSet/Type") is not None and \
-            "Percussion" in (tr.find(".//InstrumentSet/Type").text or "")
-        track_meta.append({"name": name, "gm": gm, "tuning_low_high": tuning_lh, "perc": is_perc})
+        is_perc = (tr.find(".//InstrumentSet/Type") is not None and
+                   "Percussion" in (tr.find(".//InstrumentSet/Type").text or "")) or \
+            bool(_DRUM_NAME_RE.search(name))
+        # Drum-kit articulation index -> output MIDI note (percussion notes reference
+        # this instead of String/Fret/Midi properties). Non-percussion tracks also have
+        # an InstrumentSet/Elements tree (used for notation), so only consult this for
+        # percussion tracks -- otherwise melodic notes get misread as drum hits.
+        artic_midi = ([int(_text(a, "OutputMidiNumber", "0"))
+                       for a in tr.findall(".//InstrumentSet/Elements/Element/Articulations/Articulation")]
+                      if is_perc else [])
+        track_meta.append({"name": name, "gm": gm, "tuning_low_high": tuning_lh,
+                            "perc": is_perc, "artic_midi": artic_midi})
 
     masterbars = root.findall("./MasterBars/MasterBar")
     out_tracks: List[GPTrack] = []
@@ -264,7 +285,7 @@ def _from_gpif(path: str) -> GPSong:
                         rhythm = rhythms.get(beat.find("Rhythm").get("ref")) if beat.find("Rhythm") is not None else None
                         db = rhythm_beats(rhythm) if rhythm is not None else 1.0
                         note_ids = (beat.find("Notes").text or "").split() if beat.find("Notes") is not None else []
-                        midi = [note_midi(notes[nid], tuning) for nid in note_ids if nid in notes]
+                        midi = [note_midi(notes[nid], tuning, meta["artic_midi"]) for nid in note_ids if nid in notes]
                         midi = [m for m in midi if m is not None]
                         mbeats.append(GPBeat(pitches=midi, duration_beats=db, is_rest=not midi))
             measures.append(GPMeasure(time_sig=(num, den), beats=mbeats))

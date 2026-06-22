@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from midiutil import MIDIFile
 from midi_types.music import Composition
 from midi_types.gm_instruments import resolve_instrument
+from midi_types.gm_percussion import is_percussion_track, parse_drum_hits
 
 
 # Duration mapping: string notation to beats
@@ -163,16 +164,23 @@ def generate_midi(composition: Composition) -> str:
     midi = MIDIFile(num_tracks)
 
     for track_idx, track in enumerate(composition.tracks):
-        # Assign MIDI channel (0-15, skip channel 9 which is drums)
-        # Channel 9 (index 9) is reserved for drums in GM
-        if track_idx < 9:
+        # A percussion track (instrument "drum-kit"/"percussion"/...) is the one
+        # case that DOES belong on channel 9 -- the real GM drum kit. Its notes are
+        # drum names, not pitches (see parse_drum_hits below).
+        perc = is_percussion_track(track.instrument)
+
+        # Assign MIDI channel (0-15). Channel 9 is reserved for drums in GM, so
+        # melodic tracks skip it; a percussion track is pinned to it.
+        if perc:
+            channel = 9
+        elif track_idx < 9:
             channel = track_idx
         else:
             channel = track_idx + 1  # Skip channel 9
 
-        # Ensure we don't exceed 16 channels
+        # Ensure we don't exceed 16 channels (only reroute melodic tracks off 9).
         channel = channel % 16
-        if channel == 9:
+        if not perc and channel == 9:
             channel = 10 if track_idx < 15 else 0
 
         # Set track name
@@ -188,8 +196,9 @@ def generate_midi(composition: Composition) -> str:
             for change in composition.tempo_map:
                 midi.addTempo(track_idx, change.beat, change.bpm)
 
-        # Set instrument (program change)
-        program = resolve_instrument(track.instrument) if track.instrument else 0
+        # Set instrument (program change). On channel 9, program 0 selects the
+        # standard GM drum kit; melodic tracks resolve their GM program normally.
+        program = 0 if perc else (resolve_instrument(track.instrument) if track.instrument else 0)
         midi.addProgramChange(track_idx, channel, 0, program)
 
         # Add notes
@@ -206,8 +215,9 @@ def generate_midi(composition: Composition) -> str:
                     continue
 
                 # A chord = several pitches sounded together: one addNote per tone
-                # at the same time and duration, then advance the cursor once.
-                pitches = parse_pitches(note.pitch)
+                # at the same time and duration, then advance the cursor once. On a
+                # percussion track the tokens are drum names, mapped to GM kit notes.
+                pitches = parse_drum_hits(note.pitch) if perc else parse_pitches(note.pitch)
                 velocity = note.velocity if note.velocity is not None else 100
                 velocity = max(1, min(127, int(velocity)))
 

@@ -210,8 +210,23 @@ after the last note.
 
 Full list: [midi_types/gm_instruments.py](midi_types/gm_instruments.py)
 
+## Drums (real GM kit)
+
+Give a track the instrument `drum-kit` (also `percussion`/`kit`) and it is placed on
+MIDI channel 9 (the GM kit). Its note `pitch` values are **drum names**, not pitches:
+`kick`, `snare`, `hihat-open`/`hihat-closed`, `crash`, `ride`, `tom-low`/`tom-mid`/
+`tom-high`, ... Stack simultaneous hits like a chord (`"kick+crash"`); `R` is a rest.
+Full map: [midi_types/gm_percussion.py](midi_types/gm_percussion.py). (The plain
+`drums` *alias* is different — it is the pitched `synth-drum` voice, not a kit.)
+
+```json
+{"instrument": "drum-kit", "notes": [
+  {"pitch": "kick+crash", "duration": "16"}, {"pitch": "R", "duration": "16"},
+  {"pitch": "hihat-closed", "duration": "16"}, {"pitch": "snare", "duration": "16"}]}
+```
+
 ## Notes
 
-- Max 15 melodic tracks (MIDI channels 0-8, 10-15; ch.9 = drums)
+- Max 15 melodic tracks (MIDI channels 0-8, 10-15); ch.9 is the `drum-kit` track
 - Output: `output/` directory
 - WAV requires: FluidSynth + A320U.sf2 in `soundfonts/`

@@ -47,6 +47,14 @@ def analyze_one(path, dump_json):
     print(f"  structure: {s['bars']} bars, {s['unique_bars']} unique "
           f"({s['repetition_ratio']:.0%} repetition)")
 
+    perc = features.get("percussion")
+    if perc:
+        voices = ", ".join(f"{cat} {pct}%" for cat, pct in
+                            list(perc["voice_percentages"].items())[:4])
+        print(f"  drums: {perc['hits_per_bar']} hits/bar | {voices} | "
+              f"pattern repeats {perc['pattern_top_repeats']}x "
+              f"({perc['pattern_repetition_ratio']:.0%})")
+
     card = write_card(features)
     print(f"  style card -> {card.relative_to(REPO)}")
 
