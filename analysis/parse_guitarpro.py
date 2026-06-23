@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 _DRUM_NAME_RE = re.compile(r"drum|percussion|\bkit\b", re.IGNORECASE)
+_VOCAL_NAME_RE = re.compile(r"voc|voice|sing|lyric|\bvox\b|choir", re.IGNORECASE)
 
 
 # --- IR ---------------------------------------------------------------------
@@ -53,6 +54,7 @@ class GPTrack:
     gm_program: int               # General MIDI program (0-127)
     is_percussion: bool
     tuning: List[int]             # open-string MIDI pitches, high-to-low
+    is_vocal: bool = False        # a sung/vocal line (analyzed separately, like drums)
     measures: List[GPMeasure] = field(default_factory=list)
 
     def iter_beats(self):
@@ -69,11 +71,24 @@ class GPSong:
     initial_tempo: float
     tempo_map: List[Tuple[float, float]]   # (absolute_beat, bpm)
     tracks: List[GPTrack] = field(default_factory=list)
+    sections: List[Tuple[int, str]] = field(default_factory=list)  # (bar_index, label)
+    lyrics: str = ""                       # best-effort joined lyric text (often empty)
 
     def pitched_tracks(self) -> List[GPTrack]:
-        """Tracks that carry pitched notes (drop percussion and empty tracks)."""
+        """Tracks that carry pitched notes (drop percussion and empty tracks).
+
+        Vocal tracks are pitched and are intentionally kept here (they belong to the
+        song's harmony/key), but analyze.py excludes them from riff/representative
+        selection so a sung line is never mistaken for the main instrumental riff.
+        """
         return [t for t in self.tracks
                 if not t.is_percussion and any(b.pitches for _, b in t.iter_beats())]
+
+    def vocal_tracks(self) -> List[GPTrack]:
+        """Pitched vocal tracks that actually carry notes."""
+        return [t for t in self.tracks
+                if t.is_vocal and not t.is_percussion
+                and any(b.pitches for _, b in t.iter_beats())]
 
 
 # --- public entry point -----------------------------------------------------
@@ -124,6 +139,9 @@ def _from_pyguitarpro(path: str) -> GPSong:
         is_perc = (getattr(t, "isPercussionTrack", False)
                    or t.channel.channel == 9
                    or bool(_DRUM_NAME_RE.search(t.name or "")))
+        is_vocal = (not is_perc
+                    and (bool(_VOCAL_NAME_RE.search(t.name or ""))
+                         or 52 <= t.channel.instrument <= 54))  # GM choir/voice programs
         tuning = [s.value for s in t.strings]
         measures: List[GPMeasure] = []
         abs_beat = 0.0
@@ -149,8 +167,17 @@ def _from_pyguitarpro(path: str) -> GPSong:
             gm_program=t.channel.instrument,
             is_percussion=is_perc,
             tuning=tuning,
+            is_vocal=is_vocal,
             measures=measures,
         ))
+
+    # Section markers (rehearsal marks) live on the shared measure headers.
+    sections: List[Tuple[int, str]] = []
+    for i, mh in enumerate(getattr(song, "measureHeaders", []) or []):
+        mk = getattr(mh, "marker", None)
+        title = getattr(mk, "title", "") if mk is not None else ""
+        if title:
+            sections.append((i, title))
 
     return GPSong(
         title=song.title or Path(path).stem,
@@ -159,6 +186,7 @@ def _from_pyguitarpro(path: str) -> GPSong:
         initial_tempo=initial_tempo,
         tempo_map=tempo_map,
         tracks=tracks,
+        sections=sections,
     )
 
 
@@ -179,6 +207,12 @@ _NOTEVALUE_DIVISION = {
     "Whole": 1, "Half": 2, "Quarter": 4, "Eighth": 8,
     "16th": 16, "32nd": 32, "64th": 64, "128th": 128,
 }
+
+
+def _is_tie_dest(note_el) -> bool:
+    """True if this GPIF note ties INTO the previous one (a sustain, not a new onset)."""
+    tie = note_el.find("Tie")
+    return tie is not None and tie.get("destination") == "true"
 
 
 def _from_gpif(path: str) -> GPSong:
@@ -243,11 +277,23 @@ def _from_gpif(path: str) -> GPSong:
         if prog_el is None:
             prog_el = tr.find(".//Programm") or tr.find(".//Program")
         gm = int(prog_el.text) if prog_el is not None and prog_el.text else 0
-        pitches_el = tr.find(".//Tuning/Pitches")
-        tuning_lh = [int(x) for x in pitches_el.text.split()] if pitches_el is not None and pitches_el.text else []
-        is_perc = (tr.find(".//InstrumentSet/Type") is not None and
-                   "Percussion" in (tr.find(".//InstrumentSet/Type").text or "")) or \
-            bool(_DRUM_NAME_RE.search(name))
+        # Tuning lives in a <Property name="Tuning"><Pitches>..</Pitches></Property>
+        # (low->high). The older `.//Tuning/Pitches` element form is kept as a fallback.
+        tuning_lh = []
+        for prop in tr.findall(".//Property"):
+            if prop.get("name") == "Tuning":
+                pit = prop.find("Pitches")
+                if pit is not None and pit.text:
+                    tuning_lh = [int(x) for x in pit.text.split()]
+                break
+        if not tuning_lh:
+            pitches_el = tr.find(".//Tuning/Pitches")
+            tuning_lh = [int(x) for x in pitches_el.text.split()] if pitches_el is not None and pitches_el.text else []
+        instr_type = (tr.find(".//InstrumentSet/Type").text or "") \
+            if tr.find(".//InstrumentSet/Type") is not None else ""
+        is_perc = "Percussion" in instr_type or bool(_DRUM_NAME_RE.search(name))
+        is_vocal = (not is_perc
+                    and (bool(_VOCAL_NAME_RE.search(name)) or instr_type.lower() == "voice"))
         # Drum-kit articulation index -> output MIDI note (percussion notes reference
         # this instead of String/Fret/Midi properties). Non-percussion tracks also have
         # an InstrumentSet/Elements tree (used for notation), so only consult this for
@@ -256,7 +302,7 @@ def _from_gpif(path: str) -> GPSong:
                        for a in tr.findall(".//InstrumentSet/Elements/Element/Articulations/Articulation")]
                       if is_perc else [])
         track_meta.append({"name": name, "gm": gm, "tuning_low_high": tuning_lh,
-                            "perc": is_perc, "artic_midi": artic_midi})
+                            "perc": is_perc, "vocal": is_vocal, "artic_midi": artic_midi})
 
     masterbars = root.findall("./MasterBars/MasterBar")
     out_tracks: List[GPTrack] = []
@@ -285,14 +331,48 @@ def _from_gpif(path: str) -> GPSong:
                         rhythm = rhythms.get(beat.find("Rhythm").get("ref")) if beat.find("Rhythm") is not None else None
                         db = rhythm_beats(rhythm) if rhythm is not None else 1.0
                         note_ids = (beat.find("Notes").text or "").split() if beat.find("Notes") is not None else []
-                        midi = [note_midi(notes[nid], tuning, meta["artic_midi"]) for nid in note_ids if nid in notes]
-                        midi = [m for m in midi if m is not None]
+                        note_els = [notes[nid] for nid in note_ids if nid in notes]
+                        midi = [m for m in (note_midi(ne, tuning, meta["artic_midi"]) for ne in note_els)
+                                if m is not None]
+                        # A beat whose every note ties INTO the previous note is a sustain,
+                        # not a new attack. Within the bar, fold its time into the held note
+                        # (so following onsets keep their grid position); across the barline,
+                        # emit a rest that holds the time without registering as an onset.
+                        if note_els and all(_is_tie_dest(ne) for ne in note_els):
+                            if mbeats and not mbeats[-1].is_rest:
+                                mbeats[-1].duration_beats += db
+                            else:
+                                mbeats.append(GPBeat(pitches=[], duration_beats=db, is_rest=True))
+                            continue
                         mbeats.append(GPBeat(pitches=midi, duration_beats=db, is_rest=not midi))
             measures.append(GPMeasure(time_sig=(num, den), beats=mbeats))
         out_tracks.append(GPTrack(
             name=meta["name"], gm_program=meta["gm"], is_percussion=meta["perc"],
-            tuning=tuning, measures=measures,
+            tuning=tuning, is_vocal=meta["vocal"], measures=measures,
         ))
+
+    # Section markers: a <Section> child of a MasterBar names that bar (Intro, Verse, ...).
+    sections: List[Tuple[int, str]] = []
+    for i, mb in enumerate(masterbars):
+        sec = mb.find("Section")
+        if sec is None:
+            continue
+        letter = sec.find("Letter")
+        text = sec.find("Text")
+        label = ((letter.text if letter is not None and letter.text else "")
+                 or (text.text if text is not None and text.text else ""))
+        if label:
+            sections.append((i, label.strip()))
+
+    # Lyrics: best-effort. The GPIF <Lyrics> block is often empty (oohs/instrumental
+    # tabs), so this is a bonus signal, not the primary vocal feature.
+    lyric_lines = []
+    for ly in root.findall(".//Lyrics"):
+        for ln in ly.findall(".//Line"):
+            txt = ln.find("Text")
+            if txt is not None and txt.text and txt.text.strip():
+                lyric_lines.append(txt.text.strip())
+    lyrics_text = " ".join(lyric_lines)
 
     # tempo: MasterTrack automations of type Tempo, positioned by bar
     initial_tempo = 120.0
@@ -311,6 +391,7 @@ def _from_gpif(path: str) -> GPSong:
     return GPSong(
         title=title, artist=artist, fmt="gp",
         initial_tempo=initial_tempo, tempo_map=tempo_map, tracks=out_tracks,
+        sections=sections, lyrics=lyrics_text,
     )
 
 

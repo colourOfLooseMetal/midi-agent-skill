@@ -116,8 +116,12 @@ def estimate_key(pc_weights: Dict[int, float]) -> Optional[Dict]:
 
 
 def _representative_track(song: GPSong) -> Optional[GPTrack]:
-    """The pitched track with the most note-bearing beats -- the main riff carrier."""
-    pitched = song.pitched_tracks()
+    """The pitched track with the most note-bearing beats -- the main riff carrier.
+
+    Vocal tracks are excluded here so a busy sung line is never picked as "the riff";
+    they get their own analysis in `_analyze_vocals`.
+    """
+    pitched = [t for t in song.pitched_tracks() if not t.is_vocal] or song.pitched_tracks()
     if not pitched:
         return None
     return max(pitched, key=lambda t: sum(1 for _, b in t.iter_beats() if b.pitches))
@@ -213,38 +217,205 @@ def _bar_onset_row(measure: GPMeasure) -> str:
     return "".join(row)
 
 
-def _top_riffs(track: Optional[GPTrack], root_pc: Optional[int], n: int = 3) -> List[Dict]:
-    """The N most-repeated distinct bars on the representative track, transcribed.
+def _pitchclass_sets(measure: GPMeasure) -> List[frozenset]:
+    """The pitch-class set of each sounding beat in a bar (octave-collapsed)."""
+    return [frozenset(p % 12 for p in b.pitches)
+            for b in measure.beats if not b.is_rest and b.pitches]
 
-    Real songs cycle more than one riff (verse vs. chorus, etc.) -- picking only the
-    single most-common bar (as `_structure` does for the repetition ratio) throws the
-    rest away. This keeps the top N distinct patterns and renders each one as an
-    actual pitch/duration sequence instead of an aggregate statistic.
+
+def _is_pedal_bar(measure: GPMeasure) -> bool:
+    """A drone/pedal bar that sits on one chord/root rather than moving like a riff.
+
+    True when every sounding beat collapses to the SAME pitch-class set, so octave
+    leaps or re-articulations of one chord count as a pedal (e.g. `B1+Gb2 -> B2+Gb3`
+    is the root oscillating octaves, not a melodic figure). This is what kept Empress
+    Rising's held-chord bars at the top of the old most-repeated ranking.
     """
-    if track is None:
-        return []
-    examples: Dict[Tuple, GPMeasure] = {}
-    counts = collections.Counter()
-    for m in track.measures:
-        sig = _bar_signature(m)
-        if not sig:
-            continue
-        counts[sig] += 1
-        examples.setdefault(sig, m)
+    pcsets = _pitchclass_sets(measure)
+    return bool(pcsets) and len(set(pcsets)) <= 1   # must sound something; an all-rest bar is neither
 
-    riffs = []
-    for sig, repeats in counts.most_common(n):
-        m = examples[sig]
-        transcription = _transcribe_measure(m, root_pc)
-        degree_seq = " -> ".join(e["degree"] for e in transcription if e["degree"])
-        riffs.append({
-            "repeats": repeats,
-            "time_sig": f"{m.time_sig[0]}/{m.time_sig[1]}",
-            "transcription": transcription,
-            "onset_grid": _bar_onset_row(m),
-            "degree_sequence": degree_seq,
+
+def _riff_entry(bars: List[GPMeasure], repeats: int, root_pc: Optional[int], kind: str) -> Dict:
+    """Render a 1+ bar phrase into the transcription shape the style card consumes."""
+    transcription: List[Dict] = []
+    grids: List[str] = []
+    for m in bars:
+        transcription.extend(_transcribe_measure(m, root_pc))
+        grids.append(_bar_onset_row(m))
+    degree_seq = " -> ".join(e["degree"] for e in transcription if e["degree"])
+    return {
+        "repeats": repeats,
+        "bars": len(bars),
+        "kind": kind,                       # "riff" (moving) or "pedal" (drone)
+        "time_sig": f"{bars[0].time_sig[0]}/{bars[0].time_sig[1]}",
+        "transcription": transcription,
+        "onset_grid": " | ".join(grids),    # one grid per bar, joined for multi-bar phrases
+        "degree_sequence": degree_seq,
+    }
+
+
+def _top_riffs(track: Optional[GPTrack], root_pc: Optional[int], n: int = 3) -> Dict:
+    """Find the song's real riffs, separating moving figures from drones.
+
+    Two failure modes of the old "top-N most-repeated single bars" approach are fixed:
+      * **Drones dominated.** In doom the single most-repeated bar is usually a held
+        chord. Pedal bars are now classified out of the riff ranking and summarized
+        separately, so the figures that actually *move* surface.
+      * **Phrases got chopped.** A riff that spans 2 or 4 bars could only ever show as
+        one of its bars. We now look for repeated multi-bar windows (width 4, 2, 1) and
+        prefer wider phrases, so the whole hook is captured.
+    """
+    empty = {"riffs": [], "pedal": None, "pedal_ratio": 0.0}
+    if track is None:
+        return empty
+    measures = [m for m in track.measures if _bar_signature(m)]   # skip empty bars
+    if not measures:
+        return empty
+
+    # --- pedal/drone summary (the song's root center, reported but not ranked as a riff)
+    pedal_bars = [m for m in measures if _is_pedal_bar(m)]
+    pedal_ratio = round(len(pedal_bars) / len(measures), 3)
+    pedal = None
+    if pedal_bars:
+        pcounts = collections.Counter(_bar_signature(m) for m in pedal_bars)
+        psig, preps = pcounts.most_common(1)[0]
+        pmeas = next(m for m in pedal_bars if _bar_signature(m) == psig)
+        pedal = _riff_entry([pmeas], preps, root_pc, kind="pedal")
+
+    # --- candidate riffs: repeated windows of decreasing width that actually move
+    candidates: List[Tuple[int, int, List[GPMeasure]]] = []   # (width, repeats, bars)
+    for width in (4, 2, 1):
+        counts = collections.Counter()
+        examples: Dict[Tuple, List[GPMeasure]] = {}
+        for start in range(len(measures) - width + 1):
+            win = measures[start:start + width]
+            sig = tuple(_bar_signature(m) for m in win)
+            counts[sig] += 1
+            examples.setdefault(sig, win)
+        for sig, reps in counts.most_common():
+            if width > 1 and reps < 2:
+                continue                     # a multi-bar phrase must actually recur
+            win = examples[sig]
+            if not any(_pitchclass_sets(m) for m in win):
+                continue                     # all-rest window -> not a riff
+            if all(_is_pedal_bar(m) for m in win):
+                continue                     # pure drone -> covered by the pedal summary
+            if width > 1 and len(set(sig)) < 2:
+                continue                     # just one bar tiled; the width-1 pass has it
+            candidates.append((width, reps, win))
+
+    # rank: more repeats wins, but reward width so whole phrases beat their own sub-bars
+    candidates.sort(key=lambda c: (c[1] * (0.5 + 0.5 * c[0]), c[0], c[1]), reverse=True)
+
+    riffs: List[Dict] = []
+    accepted_sets: List[frozenset] = []      # distinct bar-sigs already shown
+    for width, reps, win in candidates:
+        bar_sigs = frozenset(_bar_signature(m) for m in win)
+        # skip rotations / sub-windows of a phrase we already kept (we process widest-first)
+        if any(bar_sigs <= s for s in accepted_sets):
+            continue
+        riffs.append(_riff_entry(win, reps, root_pc, kind="riff"))
+        accepted_sets.append(bar_sigs)
+        if len(riffs) >= n:
+            break
+
+    return {"riffs": riffs, "pedal": pedal, "pedal_ratio": pedal_ratio}
+
+
+def _analyze_vocals(song: GPSong, root_pc: Optional[int]) -> Optional[Dict]:
+    """Melodic profile of the vocal line: range, scale degrees, phrasing -- like drums.
+
+    Vocals aren't in this skill's instrument set, but the contour + phrasing tell a
+    composer where to leave space in the riff and suggest a lead line (clean guitar /
+    organ) that tracks the vocal. Best-effort lyric text is attached when present.
+    """
+    tracks = song.vocal_tracks()
+    if not tracks:
+        return None
+    track = max(tracks, key=lambda t: sum(1 for _, b in t.iter_beats() if b.pitches))
+    pitches = [p for _, b in track.iter_beats() for p in b.pitches]
+    if not pitches:
+        return None
+    low, high = min(pitches), max(pitches)
+
+    # phrasing: a rest gap of >= a half note (2 beats) breaks one sung phrase from the next
+    phrases: List[int] = []
+    cur = 0
+    gap = 0.0
+    for _, b in track.iter_beats():
+        if b.is_rest or not b.pitches:
+            gap += b.duration_beats
+            if gap >= 2.0 and cur:
+                phrases.append(cur); cur = 0
+        else:
+            if gap >= 2.0 and cur:
+                phrases.append(cur); cur = 0
+            cur += 1
+            gap = 0.0
+    if cur:
+        phrases.append(cur)
+
+    deg_hist = collections.Counter()
+    if root_pc is not None:
+        for p in pitches:
+            deg_hist[degree_label(root_pc, p % 12)] += 1
+    dur_hist = collections.Counter(_label_duration(b.duration_beats)
+                                   for _, b in track.iter_beats() if not b.is_rest and b.pitches)
+
+    # representative phrase: the longest unbroken sung run, transcribed in skill syntax
+    rep_phrase: List[Dict] = []
+    run: List = []
+    best: List = []
+    gap = 0.0
+    for _, b in track.iter_beats():
+        if b.is_rest or not b.pitches:
+            gap += b.duration_beats
+            if gap >= 2.0:
+                if len(run) > len(best):
+                    best = run
+                run = []
+        else:
+            if gap >= 2.0:
+                if len(run) > len(best):
+                    best = run
+                run = []
+            run.append(b); gap = 0.0
+    if len(run) > len(best):
+        best = run
+    for b in best:
+        ps = sorted(set(b.pitches))
+        rep_phrase.append({
+            "pitch": "+".join(_midi_name(p) for p in ps),
+            "duration": _skill_duration(b.duration_beats),
+            "degree": degree_label(root_pc, ps[0] % 12) if root_pc is not None else None,
         })
-    return riffs
+
+    return {
+        "track_name": track.name,
+        "range_low": _midi_name(low),
+        "range_high": _midi_name(high),
+        "range_semitones": high - low,
+        "note_count": len(pitches),
+        "phrase_count": len(phrases),
+        "avg_notes_per_phrase": round(sum(phrases) / len(phrases), 1) if phrases else 0.0,
+        "degree_histogram": dict(deg_hist.most_common()),
+        "duration_histogram": dict(dur_hist.most_common()),
+        "representative_phrase": rep_phrase,
+        "lyrics": song.lyrics[:400] if song.lyrics else "",
+    }
+
+
+def _arrangement(song: GPSong, total_bars: int) -> List[Dict]:
+    """Section markers -> an ordered song map with 1-based bar ranges."""
+    if not song.sections:
+        return []
+    secs = sorted(song.sections)
+    out = []
+    for j, (bar, label) in enumerate(secs):
+        end = secs[j + 1][0] - 1 if j + 1 < len(secs) else max(total_bars - 1, bar)
+        out.append({"label": label, "start_bar": bar + 1,
+                    "end_bar": end + 1, "bars": end - bar + 1})
+    return out
 
 
 def _percussion_track(song: GPSong) -> Optional[GPTrack]:
@@ -362,7 +533,10 @@ def analyze(song: GPSong) -> Dict:
     intervals = _interval_stats(song)
     structure = _structure(rep)
     root_pc = key["root"] if key else None
-    riffs = _top_riffs(rep, root_pc, n=3)
+    riff_data = _top_riffs(rep, root_pc, n=3)
+    vocals = _analyze_vocals(song, root_pc)
+    total_bars_all = max((len(t.measures) for t in song.tracks), default=0)
+    arrangement = _arrangement(song, total_bars_all)
     pc_degrees = ({PITCH_CLASSES[pc]: degree_label(root_pc, pc) for pc in pc_weights}
                   if root_pc is not None else {})
 
@@ -405,11 +579,16 @@ def analyze(song: GPSong) -> Dict:
             "representative_track": rep.name if rep else None,
         },
         "instrumentation": [
-            {"name": t.name, "gm_program": t.gm_program, "percussion": t.is_percussion}
+            {"name": t.name, "gm_program": t.gm_program,
+             "percussion": t.is_percussion, "vocal": t.is_vocal}
             for t in song.tracks
         ],
         "percussion": _analyze_percussion(song),
-        "riffs": riffs,
+        "riffs": riff_data["riffs"],
+        "pedal": riff_data["pedal"],
+        "pedal_ratio": riff_data["pedal_ratio"],
+        "vocals": vocals,
+        "arrangement": arrangement,
     }
 
 

@@ -37,18 +37,15 @@ def _table(rows):
     return "\n".join(f"| {k} | {v} |" for k, v in rows)
 
 
-def _render_riffs(riffs: List[Dict], key_str: str) -> str:
-    if not riffs:
-        return ""
-    labels = "ABCDEF"
-    blocks = []
-    for i, r in enumerate(riffs):
-        notes_py = ",\n".join(
-            f'    {{"pitch": "{e["pitch"]}", "duration": "{e["duration"]}"}}'
-            for e in r["transcription"]
-        )
-        degree_line = r["degree_sequence"] or "n/a"
-        blocks.append(f"""### Riff {labels[i]} — repeats {r['repeats']}x ({r['time_sig']})
+def _riff_block(label: str, r: Dict) -> str:
+    notes_py = ",\n".join(
+        f'    {{"pitch": "{e["pitch"]}", "duration": "{e["duration"]}"}}'
+        for e in r["transcription"]
+    )
+    degree_line = r["degree_sequence"] or "n/a"
+    bars = r.get("bars", 1)
+    span = f"{bars} bar{'s' if bars != 1 else ''}, "
+    return f"""### {label} — {span}repeats {r['repeats']}x ({r['time_sig']})
 
 ```python
 [
@@ -57,23 +54,90 @@ def _render_riffs(riffs: List[Dict], key_str: str) -> str:
 ```
 
 - **Scale-degree sequence:** {degree_line}
-- **Onset grid (16th notes):** `{r['onset_grid']}`""")
-    body = "\n\n".join(blocks)
+- **Onset grid (16th notes, `|` = barline):** `{r['onset_grid']}`"""
+
+
+def _render_riffs(riffs: List[Dict], pedal: Dict | None, pedal_ratio: float, key_str: str) -> str:
+    if not riffs and not pedal:
+        return ""
+    labels = "ABCDEF"
+    blocks = [_riff_block(f"Riff {labels[i]}", r) for i, r in enumerate(riffs)]
+
+    pedal_block = ""
+    if pedal:
+        pedal_block = "\n\n" + _riff_block("Pedal / root center", pedal) + (
+            f"\n- **Coverage:** ~{pedal_ratio:.0%} of bars sit on this drone — it's the "
+            f"root the riffs above move against, not a riff itself.")
+
+    body = "\n\n".join(blocks) if blocks else "_No moving riff figure detected (this track is mostly drone)._"
     return f"""
 ## Riff transcription
 
-The {len(riffs)} most-repeated distinct bar(s) on the representative track, transcribed
-verbatim in this skill's note syntax (paste the list straight into a track's `notes`
-array) with scale degrees relative to {key_str}. Onset grids share the percussion
-grid's 16th-note convention below, so the two can be lined up by eye.
+The most-repeated **moving** figures on the representative track (multi-bar phrases
+preferred over single bars), transcribed verbatim in this skill's note syntax, with
+scale degrees relative to {key_str}. Sustained drone bars are pulled out separately as
+the **Pedal / root center**. Onset grids share the percussion grid's 16th-note
+convention below (with `|` marking each barline).
 
-{body}
-
-**How to apply in this skill:** these are real riffs, not statistics — copy one in,
-transpose only the root to change key, and keep the scale-degree sequence intact to
-stay in style. Compare each onset grid against the kick/snare grid in **Percussion**
-to see where the riff should lock to the beat.
+{body}{pedal_block}
 """
+
+
+def _render_arrangement(arrangement: List[Dict]) -> str:
+    if not arrangement:
+        return ""
+    rows = "\n".join(
+        f"| {i + 1} | {s['label']} | {s['start_bar']}–{s['end_bar']} | {s['bars']} |"
+        for i, s in enumerate(arrangement)
+    )
+    flow = " → ".join(s["label"] for s in arrangement)
+    return f"""
+## Arrangement
+
+Section markers from the source, as an ordered song map:
+
+| # | Section | Bars | Length |
+|---|---------|------|--------|
+{rows}
+
+Flow: {flow}.
+"""
+
+
+def _render_vocals(vocals: Dict | None, key_str: str) -> str:
+    if not vocals:
+        return ""
+    v = vocals
+    top_deg = ", ".join(f"{d} (×{n})" for d, n in list(v["degree_histogram"].items())[:6]) or "n/a"
+    top_dur = ", ".join(f"{lbl} ({n})" for lbl, n in list(v["duration_histogram"].items())[:4]) or "n/a"
+    phrase_py = ",\n".join(
+        f'    {{"pitch": "{e["pitch"]}", "duration": "{e["duration"]}"}}'
+        for e in v["representative_phrase"]
+    )
+    phrase_block = (f"""Longest unbroken sung phrase, transcribed (a lead-line idea):
+
+```python
+[
+{phrase_py}
+]
+```
+""" if v["representative_phrase"] else "")
+    lyrics_block = f"\n- **Lyrics (sample):** {v['lyrics']}\n" if v.get("lyrics") else ""
+    return f"""
+## Vocals
+
+Measured from the `{v['track_name']}` track (analyzed separately from the instrumental
+riffs, the way drums are).
+
+| Trait | Value |
+|-------|-------|
+| Range | {v['range_low']}–{v['range_high']} ({v['range_semitones']} semitones) |
+| Notes | {v['note_count']} |
+| Phrases | {v['phrase_count']} (avg {v['avg_notes_per_phrase']} notes/phrase) |
+| Emphasized scale degrees | {top_deg} |
+| Note durations | {top_dur} |
+{lyrics_block}
+{phrase_block}"""
 
 
 def _render_percussion(perc: Dict | None) -> str:
@@ -101,12 +165,6 @@ Dominant bar pattern (16th-note grid, `{perc['track_name']}`):
 ```
 {grid}
 ```
-
-**How to apply in this skill:** this skill has no real GM drum kit (channel 9 is
-skipped — see `CLAUDE.md`). Use this pattern as a guide rail: lock chug/palm-mute hits
-on the guitar/bass track to where `kick` lands above, place chordal accents where
-`snare`/`crash` lands, and let the hi-hat density above suggest your eighth/sixteenth
-subdivision choice.
 """
 
 
@@ -122,7 +180,9 @@ def render(features: Dict) -> str:
     title = features.get("title") or "Untitled"
 
     key_str = f"{key.get('tonic', '?')} {key.get('scale', '?')}" if key else "unknown"
-    conf = f"{key.get('confidence', 0):.0%}" if key else "n/a"
+    # `confidence` is a heuristic scale-fit score (clamped 0–1), not a calibrated
+    # probability — it often reads 100%. Label it as such so it isn't over-trusted.
+    conf = f"{key.get('confidence', 0):.0%} scale-fit (heuristic)" if key else "n/a"
     main_ts = next(iter(features["time_signatures"]), "4/4")
 
     # top durations and pitch classes for the prose
@@ -143,7 +203,7 @@ def render(features: Dict) -> str:
         ("Tempo", f"{tempo['initial_bpm']:.0f} BPM"
                   + (" (half-time feel)" if tempo["half_time_feel"] else "")),
         ("Tempo changes", tempo_changes),
-        ("Key / scale", f"{key_str}  (confidence {conf})"),
+        ("Key / scale", f"{key_str}  ({conf})"),
         ("Main time signature", main_ts),
         ("Other meters", ", ".join(k for k in features["time_signatures"] if k != main_ts) or "none"),
         ("Lowest note", reg["lowest_note"] or "n/a"),
@@ -156,29 +216,31 @@ def render(features: Dict) -> str:
                       f"top bar repeats {struct['most_repeated_bar_count']}x)"),
     ])
 
+    def _role(t):
+        if t["percussion"]:
+            return "percussion"
+        return "vocal" if t.get("vocal") else "pitched"
+
     instruments = "\n".join(
         f"| {t['name']} | {'drum kit (ch.10)' if t['percussion'] else _gm_name(t['gm_program'])} | "
         f"{'—' if t['percussion'] else t['gm_program']} | "
-        f"{'percussion' if t['percussion'] else 'pitched'} |"
+        f"{_role(t)} |"
         for t in features["instrumentation"]
     )
 
     duration_rows = "\n".join(f"| {lbl} | {n} |" for lbl, n in durs)
 
-    riffs_section = _render_riffs(features.get("riffs") or [], key_str)
+    riffs_section = _render_riffs(features.get("riffs") or [], features.get("pedal"),
+                                  features.get("pedal_ratio") or 0.0, key_str)
+    arrangement_section = _render_arrangement(features.get("arrangement") or [])
+    vocals_section = _render_vocals(features.get("vocals"), key_str)
     percussion_section = _render_percussion(features.get("percussion"))
-
-    # Suggested octave for roots from the lowest note
-    low = reg["lowest_note"] or "C2"
-    low_oct = re.sub(r"[^0-9-]", "", low) or "2"
-
-    apply_bpm = int(round(tempo["initial_bpm"]))
 
     return f"""# Style Card — {artist} – {title}
 
 *Auto-generated from `{features['format']}` by the Guitar Pro analysis pipeline
-(`analysis/`). Measured facts about a real track, plus how to reproduce the style
-with this skill's primitives. Treat the numbers as a starting point, not a cage.*
+(`analysis/`). Measured facts about a real track. See `CLAUDE.md` in this folder for
+what each section means and how to apply it in a composition.*
 
 ## Snapshot
 
@@ -188,7 +250,7 @@ with this skill's primitives. Treat the numbers as a starting point, not a cage.
 
 ## Harmony
 
-- **Key / scale:** {key_str} (confidence {conf}).
+- **Key / scale:** {key_str} ({conf}).
 - **Most-used pitch classes:** {top_pcs}.
 - **Voicing:** {voicing} — {h['power_chords']} power-chord hits vs {h['triads']} triads
   across {h['single_notes']} single notes.
@@ -204,24 +266,86 @@ with this skill's primitives. Treat the numbers as a starting point, not a cage.
 | Duration | Count |
 |----------|-------|
 {duration_rows}
-{percussion_section}
+{percussion_section}{vocals_section}{arrangement_section}
 ## Instrumentation
 
 | Track | GM instrument | Program | Role |
 |-------|---------------|---------|------|
 {instruments}
-
-## How to apply in this skill
-
-- **Set `bpm`: {apply_bpm}**{' and feel it in half-time.' if tempo['half_time_feel'] else '.'}{' Use a `tempo_map` to reproduce the tempo moves listed above.' if tempo['changes'] else ''}
-- **`time_signature`: `{main_ts}`**{(' (watch for ' + ', '.join(k for k in features['time_signatures'] if k != main_ts) + ' sections)') if len(features['time_signatures']) > 1 else ''}.
-- **Write in {key_str}.** Lean on {top_pcs}.
-- **Octave:** roots around **octave {low_oct}** (lowest note here is {low}{'; this is down-tuned territory' if reg['down_tuned'] else ''}).
-- **Voicing:** this is {voicing}. {'Write each chord as a SINGLE-track stacked pitch — `root+5th+octave` (e.g. `C2+G2+C3`) — not parallel layer tracks.' if h['power_chords'] >= h['triads'] and chord_total else 'Use stacked single-track chords rather than parallel layer tracks.'}
-- **Duration palette:** favor {top_durs.split(',')[0].split('(')[0].strip()} as the rhythmic unit; mix in the rest of the histogram above.
-- **Structure:** highly repetitive ({struct['repetition_ratio']:.0%}) — commit to a riff and cycle it; the top bar repeats {struct['most_repeated_bar_count']}x here. See **Riff transcription** above for the actual notes, not just the count.
-- **Dynamics:** the source has real accents Guitar Pro encodes that MIDI velocity can mimic — use per-note `velocity` (ghost ~40, normal ~80, accent ~110+) instead of a flat wall.
 """
+
+
+GUIDE = """# Style Cards — how to read and use them
+
+Each `.md` file in this folder is a **style card**: measured facts about one real
+track, auto-generated by `analysis/` from a Guitar Pro file. This file holds the
+explanation once instead of repeating it in every card.
+
+## Headings
+
+- **Snapshot** — at-a-glance table: tempo, key/scale, time signature, lowest
+  note/string, note density, voicing, structural repetition.
+- **Harmony** — key/scale with a `confidence` (a heuristic scale-fit score, not a
+  calibrated probability — it often reads 100%, so don't over-trust it), most-used
+  pitch classes, power-chord vs triad vs single-note counts, interval color.
+- **Riff transcription** — the most-repeated *moving* figures, transcribed verbatim
+  in this skill's note syntax (`{"pitch": ..., "duration": ...}`), each with a
+  scale-degree sequence and a 16th-note onset grid (`|` = barline). Sustained drone
+  bars are split out as **Pedal / root center** rather than counted as a riff.
+- **Rhythm & pacing** — note density, tempo (+ any tempo changes), duration
+  histogram.
+- **Percussion** *(if present)* — per-voice hit counts, hits/bar, pattern
+  repetition, fill density, and the dominant bar pattern on the same 16th-note
+  grid as the riffs (so the two can be lined up by eye).
+- **Vocals** *(if present)* — range, phrase count/length, emphasized scale
+  degrees, duration histogram, and (if the phrase was short enough) a
+  representative transcribed phrase.
+- **Arrangement** *(if present)* — section markers from the source as an ordered
+  song map (bars per section, overall flow).
+- **Instrumentation** — each track's GM instrument/program and role
+  (pitched/percussion/vocal).
+
+## Applying a card to a composition
+
+- **Tempo/meter:** set `bpm` from Snapshot; if the card lists tempo changes, use a
+  `tempo_map` to reproduce them; set `time_signature` from the main meter.
+- **Key:** write in the listed key/scale, leaning on the most-used pitch classes.
+- **Octave:** root around the octave of the card's lowest note — that's down-tuned
+  territory if flagged as such.
+- **Voicing:** if power-chord driven, write each chord as a single-track stacked
+  pitch (`root+5th+octave`, e.g. `C2+G2+C3`), not parallel layer tracks — see
+  CLAUDE.md's *Hard constraints* at the repo root.
+- **Riffs:** copy a transcribed riff in verbatim and transpose only the root to
+  change key; keep its scale-degree sequence intact to stay in style. Lay the
+  Pedal/root center under it as a low sustained chord.
+- **Percussion:** this skill has no real GM drum kit (channel 9 is skipped — see
+  the repo-root `CLAUDE.md`). Use a card's percussion pattern as a guide rail: lock
+  chug/palm-mute hits to where `kick` lands, chordal accents to `snare`/`crash`, and
+  let hi-hat density suggest the eighth/sixteenth subdivision.
+- **Vocals:** not in this skill's instrument set, but the contour shows where
+  melodic weight sits and the phrasing shows where to leave space in the riff under
+  sung phrases. Voice the line on a clean lead (e.g. `rock-organ` or clean guitar)
+  tracking its scale degrees.
+- **Arrangement:** build section by section in the listed order, swapping
+  riff/pedal/voicing per section (e.g. drop to the pedal in an intro/interlude,
+  bring the moving riff back for verses, thicken voicing for a chorus); bar counts
+  say how long to hold each.
+- **Structure:** a high repetition ratio means commit to a riff and cycle it — use
+  the actual transcribed notes in **Riff transcription**, not just the repeat count.
+- **Dynamics:** Guitar Pro encodes real accents that aren't yet extracted into these
+  cards; until they are, use per-note `velocity` (ghost ~40, normal ~80, accent
+  ~110+) by ear instead of a flat wall.
+
+*Regenerated each time `analyze_song.py` writes a card into this folder — edits here
+will be overwritten.*
+"""
+
+
+def write_guide(out_dir: Path = STYLES_DIR) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / "CLAUDE.md"
+    path.write_text(GUIDE, encoding="utf-8")
+    return path
 
 
 def write_card(features: Dict, out_dir: Path = STYLES_DIR) -> Path:
