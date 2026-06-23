@@ -13,8 +13,8 @@ what each section means and how to apply it in a composition.*
 | Key / scale | Bb Phrygian  (100% scale-fit (heuristic)) |
 | Main time signature | 4/4 |
 | Other meters | none |
-| Lowest note | Bb0 |
-| Lowest open string | Bb0  (down-tuned) |
+| Lowest note (guitar) | Bb1 |
+| Lowest open string (guitar) | Bb1  (down-tuned) |
 | Notes per bar | 16.8 |
 | Voicing | power-chord driven |
 | Structure | 223 bars, 47 unique (repetition 79%; top bar repeats 30x) |
@@ -24,7 +24,7 @@ what each section means and how to apply it in a composition.*
 - **Key / scale:** Bb Phrygian (100% scale-fit (heuristic)).
 - **Most-used pitch classes:** 1 (Bb), 4 (Eb), 5 (F), b6 (Gb), b5 (E), b3 (Db).
 - **Voicing:** power-chord driven — 683 power-chord hits vs 0 triads
-  across 2307 single notes.
+  across 1107 single notes.
 - **Interval color (within chords):** tritone ×0, minor-2nd
   ×0, fifth ×1402.
 
@@ -130,6 +130,85 @@ convention below (with `|` marking each barline).
 - **Onset grid (16th notes, `|` = barline):** `X.......X......X`
 - **Coverage:** ~14% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
 
+## Bass
+
+Measured from the `Tim Bagshaw - Electric Bass (finger)` track, analyzed separately from the guitar
+riff above so a bass line that diverges from it (different syncopation, a walking
+passage, a fill) isn't averaged away into the combined harmony/register stats.
+
+| Trait | Value |
+|-------|-------|
+| Range | Bb0–Gb2 |
+| Lowest open string | Bb0  (down-tuned) |
+| Voicing | single-note line — 0 power-chord hits / 0 triads / 1200 single notes |
+| Structure | 223 bars, 37 unique (repetition 83%; top bar repeats 40x) |
+
+### Bass riff A — 4 bars, repeats 20x (4/4)
+
+```python
+[
+    {"pitch": "Bb0", "duration": "4"},
+    {"pitch": "Bb1", "duration": "T4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "E1", "duration": "T4"},
+    {"pitch": "Eb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "E1", "duration": "T4"},
+    {"pitch": "Eb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "Db1", "duration": "T4"},
+    {"pitch": "Eb1", "duration": "d4"},
+    {"pitch": "Bb0", "duration": "4"},
+    {"pitch": "Bb1", "duration": "T4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "E1", "duration": "T4"},
+    {"pitch": "Eb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "E1", "duration": "T4"},
+    {"pitch": "Eb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "Db1", "duration": "T4"},
+    {"pitch": "Eb1", "duration": "d4"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 1 -> 1 -> b5 -> 4 -> 1 -> b5 -> 4 -> 1 -> b3 -> 4 -> 1 -> 1 -> 1 -> b5 -> 4 -> 1 -> b5 -> 4 -> 1 -> b3 -> 4
+- **Onset grid (16th notes, `|` = barline):** `X...X..XX..X...X | X..X...XX..X.... | X...X..XX..X...X | X..X...XX..X....`
+
+### Bass riff B — 1 bar, repeats 30x (4/4)
+
+```python
+[
+    {"pitch": "Bb0", "duration": "4"},
+    {"pitch": "Bb0", "duration": "T4"},
+    {"pitch": "Bb0", "duration": "T8"},
+    {"pitch": "B1", "duration": "T4"},
+    {"pitch": "A1", "duration": "d4"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 1 -> 1 -> b2 -> 7
+- **Onset grid (16th notes, `|` = barline):** `X...X..XX..X....`
+
+### Bass pedal / root center — 1 bar, repeats 12x (4/4)
+
+```python
+[
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "d4"},
+    {"pitch": "Bb0", "duration": "T8"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 1 -> 1 -> 1 -> 1 -> 1 -> 1 -> 1
+- **Onset grid (16th notes, `|` = barline):** `XX.XXX.XX......X`
+- **Coverage:** ~21% of bars sit on this drone.
+
 ## Rhythm & pacing
 
 - **Note density:** 16.8 notes per bar.
@@ -198,5 +277,5 @@ Flow: Transition from Vinum Sabbathi → Chorus → Verse → Interlude → Vers
 | Jus Oborn (left) - Distortion Guitar | distortion-guitar | 30 | pitched |
 | Jus Oborn (Overdriven intro) - Overdriven Guitar | overdriven-guitar | 29 | pitched |
 | Jus Oborn (right) - Distortion Guitar | distortion-guitar | 30 | pitched |
-| Tim Bagshaw - Electric Bass (finger) | electric-bass-finger | 33 | pitched |
+| Tim Bagshaw - Electric Bass (finger) | electric-bass-finger | 33 | bass |
 | Mark Greening - Drums | drum kit (ch.10) | — | percussion |

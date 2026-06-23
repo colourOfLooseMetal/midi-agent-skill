@@ -13,8 +13,8 @@ what each section means and how to apply it in a composition.*
 | Key / scale | C Phrygian  (93% scale-fit (heuristic)) |
 | Main time signature | 4/4 |
 | Other meters | 2/4 |
-| Lowest note | C1 |
-| Lowest open string | C1  (down-tuned) |
+| Lowest note (guitar) | C2 |
+| Lowest open string (guitar) | C2  (down-tuned) |
 | Notes per bar | 17.72 |
 | Voicing | power-chord driven |
 | Structure | 131 bars, 33 unique (repetition 75%; top bar repeats 19x) |
@@ -24,7 +24,7 @@ what each section means and how to apply it in a composition.*
 - **Key / scale:** C Phrygian (93% scale-fit (heuristic)).
 - **Most-used pitch classes:** 1 (C), 4 (F), 5 (G), b3 (Eb), b7 (Bb), b5 (Gb).
 - **Voicing:** power-chord driven — 335 power-chord hits vs 1 triads
-  across 1800 single notes.
+  across 949 single notes.
 - **Interval color (within chords):** tritone ×3, minor-2nd
   ×8, fifth ×502.
 
@@ -141,6 +141,89 @@ convention below (with `|` marking each barline).
 - **Scale-degree sequence:** 4 -> 4
 - **Onset grid (16th notes, `|` = barline):** `X.......X.......`
 - **Coverage:** ~7% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
+
+## Bass
+
+Measured from the `The Plague Doctor - Electric Bass (pick)` track, analyzed separately from the guitar
+riff above so a bass line that diverges from it (different syncopation, a walking
+passage, a fill) isn't averaged away into the combined harmony/register stats.
+
+| Trait | Value |
+|-------|-------|
+| Range | C1–Gb3 |
+| Lowest open string | C1  (down-tuned) |
+| Voicing | single-note line — 0 power-chord hits / 0 triads / 710 single notes |
+| Structure | 128 bars, 36 unique (repetition 72%; top bar repeats 19x) |
+
+### Bass riff A — 4 bars, repeats 15x (4/4)
+
+```python
+[
+    {"pitch": "C1", "duration": "4"},
+    {"pitch": "Gb1", "duration": "4"},
+    {"pitch": "Eb1", "duration": "T4"},
+    {"pitch": "F1", "duration": "T8"},
+    {"pitch": "Eb1", "duration": "T4"},
+    {"pitch": "F1", "duration": "T8"},
+    {"pitch": "C1", "duration": "4"},
+    {"pitch": "Gb1", "duration": "4"},
+    {"pitch": "Eb1", "duration": "4"},
+    {"pitch": "F1", "duration": "4"},
+    {"pitch": "C1", "duration": "4"},
+    {"pitch": "Gb1", "duration": "4"},
+    {"pitch": "Eb1", "duration": "T4"},
+    {"pitch": "F1", "duration": "T8"},
+    {"pitch": "Eb1", "duration": "T4"},
+    {"pitch": "F1", "duration": "T8"},
+    {"pitch": "C1", "duration": "4"},
+    {"pitch": "Gb1", "duration": "4"},
+    {"pitch": "Eb1", "duration": "4"},
+    {"pitch": "F1", "duration": "4"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> b5 -> b3 -> 4 -> b3 -> 4 -> 1 -> b5 -> b3 -> 4 -> 1 -> b5 -> b3 -> 4 -> b3 -> 4 -> 1 -> b5 -> b3 -> 4
+- **Onset grid (16th notes, `|` = barline):** `X...X...X..XX..X | X...X...X...X... | X...X...X..XX..X | X...X...X...X...`
+
+### Bass riff B — 2 bars, repeats 9x (4/4)
+
+```python
+[
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "C2", "duration": "T4"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "C2", "duration": "T4"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "Bb1", "duration": "T8"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "C2", "duration": "T4"},
+    {"pitch": "C2", "duration": "T8"},
+    {"pitch": "Db2", "duration": "T4"},
+    {"pitch": "C2", "duration": "T4"},
+    {"pitch": "Bb1", "duration": "T4"}
+]
+```
+
+- **Scale-degree sequence:** b7 -> 1 -> 1 -> 1 -> 1 -> b7 -> 1 -> 1 -> 1 -> 1 -> b7 -> 1 -> 1 -> 1 -> 1 -> b2 -> 1 -> b7
+- **Onset grid (16th notes, `|` = barline):** `XX.XX..XXX.XX..X | XX.XX..XX..X.X..`
+
+### Bass pedal / root center — 1 bar, repeats 4x (4/4)
+
+```python
+[
+    {"pitch": "C2", "duration": "1"}
+]
+```
+
+- **Scale-degree sequence:** 1
+- **Onset grid (16th notes, `|` = barline):** `X...............`
+- **Coverage:** ~9% of bars sit on this drone.
 
 ## Rhythm & pacing
 
@@ -271,5 +354,5 @@ Flow: Intro → Verse 1 → Verse 2 → Break → Guitar Solo 1 → Verse 3 → 
 | The Rat Queen - Vocals - Voice Oohs | voice-oohs | 53 | vocal |
 | The Rat Queen - Guitar - Distortion Guitar | distortion-guitar | 30 | pitched |
 | The Count - Distortion Guitar | distortion-guitar | 30 | pitched |
-| The Plague Doctor - Electric Bass (pick) | electric-bass-pick | 34 | pitched |
+| The Plague Doctor - Electric Bass (pick) | electric-bass-pick | 34 | bass |
 | The Druid - Drums | drum kit (ch.10) | — | percussion |

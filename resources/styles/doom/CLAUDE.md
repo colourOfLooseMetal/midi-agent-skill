@@ -7,16 +7,24 @@ explanation once instead of repeating it in every card.
 ## Headings
 
 - **Snapshot** — at-a-glance table: tempo, key/scale, time signature, lowest
-  note/string, note density, voicing, structural repetition.
+  note/string, note density, voicing, structural repetition. The lowest-note rows
+  are scoped to guitar specifically (see **Bass** below for the bass's own range).
 - **Harmony** — key/scale with a `confidence` (a heuristic scale-fit score, not a
   calibrated probability — it often reads 100%, so don't over-trust it), most-used
-  pitch classes, power-chord vs triad vs single-note counts, interval color.
-- **Riff transcription** — the most-repeated *moving* figures, transcribed verbatim
-  in this skill's note syntax (`{"pitch": ..., "duration": ...}`), each with a
-  scale-degree sequence and a 16th-note onset grid (`|` = barline). Sustained drone
-  bars are split out as **Pedal / root center** rather than counted as a riff.
+  pitch classes (across all pitched instruments), and power-chord/triad/single-note
+  counts + interval color scoped to the **guitar** tracks (bass has its own voicing
+  breakdown below so its mostly-single-note line doesn't dilute the guitar's).
+- **Riff transcription** — the most-repeated *moving* figures on the guitar,
+  transcribed verbatim in this skill's note syntax (`{"pitch": ..., "duration": ...}`),
+  each with a scale-degree sequence and a 16th-note onset grid (`|` = barline).
+  Sustained drone bars are split out as **Pedal / root center** rather than counted
+  as a riff.
+- **Bass** *(if present)* — the bass's own range, voicing, structure, and riff/pedal
+  transcription, measured the same way as the guitar's but kept separate so a bass
+  line that diverges from the guitar (different syncopation, a walking passage, a
+  fill) isn't averaged into the guitar's numbers or lost entirely.
 - **Rhythm & pacing** — note density, tempo (+ any tempo changes), duration
-  histogram.
+  histogram (across all pitched instruments).
 - **Percussion** *(if present)* — per-voice hit counts, hits/bar, pattern
   repetition, fill density, and the dominant bar pattern on the same 16th-note
   grid as the riffs (so the two can be lined up by eye).
@@ -26,15 +34,20 @@ explanation once instead of repeating it in every card.
 - **Arrangement** *(if present)* — section markers from the source as an ordered
   song map (bars per section, overall flow).
 - **Instrumentation** — each track's GM instrument/program and role
-  (pitched/percussion/vocal).
+  (pitched/percussion/vocal/bass).
 
 ## Applying a card to a composition
 
 - **Tempo/meter:** set `bpm` from Snapshot; if the card lists tempo changes, use a
   `tempo_map` to reproduce them; set `time_signature` from the main meter.
 - **Key:** write in the listed key/scale, leaning on the most-used pitch classes.
-- **Octave:** root around the octave of the card's lowest note — that's down-tuned
-  territory if flagged as such.
+- **Octave:** root the guitar around the octave of the card's lowest note — that's
+  down-tuned territory if flagged as such. Root the bass an octave below using its
+  own **Bass** range/lowest-string numbers, not the guitar's.
+- **Bass line:** if the card has a Bass section, give the bass its own track and copy
+  its riff/pedal transcription in like the guitar's — don't just double the guitar
+  line an octave down, the bass's own riffs may diverge (different rhythm, walking
+  passages, fills under a guitar pedal).
 - **Voicing:** if power-chord driven, write each chord as a single-track stacked
   pitch (`root+5th+octave`, e.g. `C2+G2+C3`), not parallel layer tracks — see
   CLAUDE.md's *Hard constraints* at the repo root.

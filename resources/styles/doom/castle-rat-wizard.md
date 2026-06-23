@@ -13,18 +13,18 @@ what each section means and how to apply it in a composition.*
 | Key / scale | C Phrygian  (91% scale-fit (heuristic)) |
 | Main time signature | 4/4 |
 | Other meters | 2/4, 7/8 |
-| Lowest note | C1 |
-| Lowest open string | C1  (down-tuned) |
+| Lowest note (guitar) | C2 |
+| Lowest open string (guitar) | C2  (down-tuned) |
 | Notes per bar | 22.76 |
 | Voicing | power-chord driven |
-| Structure | 117 bars, 51 unique (repetition 56%; top bar repeats 19x) |
+| Structure | 59 bars, 38 unique (repetition 36%; top bar repeats 8x) |
 
 ## Harmony
 
 - **Key / scale:** C Phrygian (91% scale-fit (heuristic)).
 - **Most-used pitch classes:** 5 (G), 1 (C), b7 (Bb), b6 (Ab), 4 (F), b3 (Eb).
-- **Voicing:** power-chord driven — 211 power-chord hits vs 0 triads
-  across 2203 single notes.
+- **Voicing:** power-chord driven — 210 power-chord hits vs 0 triads
+  across 1225 single notes.
 - **Interval color (within chords):** tritone ×2, minor-2nd
   ×1, fifth ×473.
 
@@ -36,7 +36,111 @@ scale degrees relative to C Phrygian. Sustained drone bars are pulled out separa
 the **Pedal / root center**. Onset grids share the percussion grid's 16th-note
 convention below (with `|` marking each barline).
 
-### Riff A — 1 bar, repeats 19x (4/4)
+### Riff A — 2 bars, repeats 4x (4/4)
+
+```python
+[
+    {"pitch": "R", "duration": "1"},
+    {"pitch": "C3", "duration": "8"},
+    {"pitch": "F3", "duration": "4"},
+    {"pitch": "E3", "duration": "8"},
+    {"pitch": "G3", "duration": "8"},
+    {"pitch": "Db3", "duration": "d4"},
+    {"pitch": "R", "duration": "8"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 4 -> 3 -> 5 -> b2
+- **Onset grid (16th notes, `|` = barline):** `..............X. | X...X.X.X.......`
+
+### Riff B — 4 bars, repeats 2x (4/4)
+
+```python
+[
+    {"pitch": "F3", "duration": "4"},
+    {"pitch": "E3", "duration": "8"},
+    {"pitch": "G3", "duration": "8"},
+    {"pitch": "Db3", "duration": "d4"},
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "R", "duration": "1"},
+    {"pitch": "C3", "duration": "8"},
+    {"pitch": "F3", "duration": "4"},
+    {"pitch": "E3", "duration": "8"},
+    {"pitch": "G3", "duration": "8"},
+    {"pitch": "Db3", "duration": "d4"},
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "Db3", "duration": "4"},
+    {"pitch": "C3", "duration": "4"},
+    {"pitch": "Bb2", "duration": "4"},
+    {"pitch": "Ab2", "duration": "4"}
+]
+```
+
+- **Scale-degree sequence:** 4 -> 3 -> 5 -> b2 -> 1 -> 4 -> 3 -> 5 -> b2 -> b2 -> 1 -> b7 -> b6
+- **Onset grid (16th notes, `|` = barline):** `X...X.X.X....... | ..............X. | X...X.X.X....... | X...X...X...X...`
+
+### Riff C — 4 bars, repeats 2x (4/4)
+
+```python
+[
+    {"pitch": "R", "duration": "1"},
+    {"pitch": "C3", "duration": "8"},
+    {"pitch": "F3", "duration": "4"},
+    {"pitch": "E3", "duration": "8"},
+    {"pitch": "G3", "duration": "8"},
+    {"pitch": "Db3", "duration": "d4"},
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "Db3", "duration": "4"},
+    {"pitch": "C3", "duration": "4"},
+    {"pitch": "Bb2", "duration": "4"},
+    {"pitch": "Ab2", "duration": "4"},
+    {"pitch": "G2", "duration": "4"},
+    {"pitch": "F2", "duration": "4"},
+    {"pitch": "Eb3", "duration": "4"},
+    {"pitch": "Db3", "duration": "4"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 4 -> 3 -> 5 -> b2 -> b2 -> 1 -> b7 -> b6 -> 5 -> 4 -> b3 -> b2
+- **Onset grid (16th notes, `|` = barline):** `..............X. | X...X.X.X....... | X...X...X...X... | X...X...X...X...`
+
+### Pedal / root center — 1 bar, repeats 8x (4/4)
+
+```python
+[
+    {"pitch": "G2", "duration": "T8"},
+    {"pitch": "G2", "duration": "T8"},
+    {"pitch": "G2", "duration": "T8"},
+    {"pitch": "G3", "duration": "T8"},
+    {"pitch": "G3", "duration": "T8"},
+    {"pitch": "G3", "duration": "T8"},
+    {"pitch": "G2", "duration": "T8"},
+    {"pitch": "G2", "duration": "T8"},
+    {"pitch": "G2", "duration": "T8"},
+    {"pitch": "G3", "duration": "T8"},
+    {"pitch": "G3", "duration": "T8"},
+    {"pitch": "G3", "duration": "T8"}
+]
+```
+
+- **Scale-degree sequence:** 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5
+- **Onset grid (16th notes, `|` = barline):** `XX.XXX.XXX.XXX.X`
+- **Coverage:** ~36% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
+
+## Bass
+
+Measured from the `The Plague Doctor - Electric Bass (pick)` track, analyzed separately from the guitar
+riff above so a bass line that diverges from it (different syncopation, a walking
+passage, a fill) isn't averaged away into the combined harmony/register stats.
+
+| Trait | Value |
+|-------|-------|
+| Range | C1–C3 |
+| Lowest open string | C1  (down-tuned) |
+| Voicing | single-note line — 1 power-chord hits / 0 triads / 722 single notes |
+| Structure | 117 bars, 51 unique (repetition 56%; top bar repeats 19x) |
+
+### Bass riff A — 1 bar, repeats 19x (4/4)
 
 ```python
 [
@@ -53,7 +157,7 @@ convention below (with `|` marking each barline).
 - **Scale-degree sequence:** 1 -> 1 -> b7 -> 5 -> b7 -> 5 -> b7
 - **Onset grid (16th notes, `|` = barline):** `X...X...X.XX.XX.`
 
-### Riff B — 4 bars, repeats 3x (4/4)
+### Bass riff B — 4 bars, repeats 3x (4/4)
 
 ```python
 [
@@ -97,47 +201,7 @@ convention below (with `|` marking each barline).
 - **Scale-degree sequence:** 1 -> 1 -> b7 -> 5 -> b7 -> 5 -> b7 -> 1 -> 1 -> b7 -> 5 -> b7 -> 5 -> b7 -> 1 -> 1 -> b7 -> 5 -> b7 -> 5 -> b7 -> b7 -> 4 -> b7 -> b7 -> 4 -> b7 -> b6 -> b6 -> b3 -> b6 -> b6 -> b3 -> b6
 - **Onset grid (16th notes, `|` = barline):** `X...X...X.XX.XX. | X...X...X.XX.XX. | X...X...X.XX.XX. | X..XXXXXX.XXXXXX`
 
-### Riff C — 4 bars, repeats 3x (4/4)
-
-```python
-[
-    {"pitch": "C2", "duration": "4"},
-    {"pitch": "C2", "duration": "4"},
-    {"pitch": "Bb1", "duration": "8"},
-    {"pitch": "G1", "duration": "16"},
-    {"pitch": "Bb1", "duration": "8"},
-    {"pitch": "G1", "duration": "16"},
-    {"pitch": "Bb1", "duration": "8"},
-    {"pitch": "C2", "duration": "4"},
-    {"pitch": "C2", "duration": "4"},
-    {"pitch": "Bb1", "duration": "8"},
-    {"pitch": "G1", "duration": "16"},
-    {"pitch": "Bb1", "duration": "8"},
-    {"pitch": "G1", "duration": "16"},
-    {"pitch": "Bb1", "duration": "8"},
-    {"pitch": "Bb1", "duration": "d8"},
-    {"pitch": "F2", "duration": "16"},
-    {"pitch": "Bb2", "duration": "16"},
-    {"pitch": "Bb2", "duration": "16"},
-    {"pitch": "F2", "duration": "16"},
-    {"pitch": "Bb1", "duration": "16"},
-    {"pitch": "Ab1", "duration": "8"},
-    {"pitch": "Ab1", "duration": "16"},
-    {"pitch": "Eb2", "duration": "16"},
-    {"pitch": "Ab2", "duration": "16"},
-    {"pitch": "Ab2", "duration": "16"},
-    {"pitch": "Eb2", "duration": "16"},
-    {"pitch": "Ab1", "duration": "16"},
-    {"pitch": "C1", "duration": "4"},
-    {"pitch": "C1", "duration": "8"},
-    {"pitch": "C1", "duration": "8"}
-]
-```
-
-- **Scale-degree sequence:** 1 -> 1 -> b7 -> 5 -> b7 -> 5 -> b7 -> 1 -> 1 -> b7 -> 5 -> b7 -> 5 -> b7 -> b7 -> 4 -> b7 -> b7 -> 4 -> b7 -> b6 -> b6 -> b3 -> b6 -> b6 -> b3 -> b6 -> 1 -> 1 -> 1
-- **Onset grid (16th notes, `|` = barline):** `X...X...X.XX.XX. | X...X...X.XX.XX. | X..XXXXXX.XXXXXX | X...X.X.`
-
-### Pedal / root center — 1 bar, repeats 8x (4/4)
+### Bass pedal / root center — 1 bar, repeats 8x (4/4)
 
 ```python
 [
@@ -158,7 +222,7 @@ convention below (with `|` marking each barline).
 
 - **Scale-degree sequence:** 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5 -> 5
 - **Onset grid (16th notes, `|` = barline):** `XX.XXX.XXX.XXX.X`
-- **Coverage:** ~46% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
+- **Coverage:** ~46% of bars sit on this drone.
 
 ## Rhythm & pacing
 
@@ -312,5 +376,5 @@ Flow: Main Riff 1 → Verse 1 → Verse 2 → Chorus 1 → Bridge → Verse 3 �
 | The Count - Lead - Distortion Guitar | distortion-guitar | 30 | pitched |
 | The Count - Solo Harmony - Distortion Guitar | distortion-guitar | 30 | pitched |
 | Drawbar Organ | drawbar-organ | 16 | pitched |
-| The Plague Doctor - Electric Bass (pick) | electric-bass-pick | 34 | pitched |
+| The Plague Doctor - Electric Bass (pick) | electric-bass-pick | 34 | bass |
 | The Druid - Drums | drum kit (ch.10) | — | percussion |

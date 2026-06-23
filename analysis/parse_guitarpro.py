@@ -30,6 +30,29 @@ from typing import List, Optional, Tuple
 
 _DRUM_NAME_RE = re.compile(r"drum|percussion|\bkit\b", re.IGNORECASE)
 _VOCAL_NAME_RE = re.compile(r"voc|voice|sing|lyric|\bvox\b|choir", re.IGNORECASE)
+_BASS_NAME_RE = re.compile(r"\bbass\b", re.IGNORECASE)
+
+
+def _is_bass_program(gm_program: int) -> bool:
+    """GM program 32-39 (0-indexed) is the whole Bass family (acoustic/electric/slap/synth)."""
+    return 32 <= gm_program <= 39
+
+
+def _classify_bass(name: str, gm_program: int) -> bool:
+    """Bass classification with the GM program as the authority over the track name.
+
+    A track named e.g. "Overdriven Bass Effect" but voiced on an explicit Guitar-
+    family program (24-31) is a guitar doubling/effects layer, not the bass -- if the
+    name regex alone decided, it would get filed into the dedicated bass section and
+    pollute its range/voicing stats with a guitar line. The name is only consulted
+    as a tiebreaker when the program itself doesn't already say "guitar" or "bass"
+    (e.g. a synth-bass part mislabeled with a generic program).
+    """
+    if 24 <= gm_program <= 31:
+        return False
+    if _is_bass_program(gm_program):
+        return True
+    return bool(_BASS_NAME_RE.search(name or ""))
 
 
 # --- IR ---------------------------------------------------------------------
@@ -55,6 +78,7 @@ class GPTrack:
     is_percussion: bool
     tuning: List[int]             # open-string MIDI pitches, high-to-low
     is_vocal: bool = False        # a sung/vocal line (analyzed separately, like drums)
+    is_bass: bool = False         # a bass line (analyzed separately from guitar -- see analyze.py)
     measures: List[GPMeasure] = field(default_factory=list)
 
     def iter_beats(self):
@@ -88,6 +112,12 @@ class GPSong:
         """Pitched vocal tracks that actually carry notes."""
         return [t for t in self.tracks
                 if t.is_vocal and not t.is_percussion
+                and any(b.pitches for _, b in t.iter_beats())]
+
+    def bass_tracks(self) -> List[GPTrack]:
+        """Pitched bass tracks that actually carry notes."""
+        return [t for t in self.tracks
+                if t.is_bass and not t.is_percussion
                 and any(b.pitches for _, b in t.iter_beats())]
 
 
@@ -142,6 +172,8 @@ def _from_pyguitarpro(path: str) -> GPSong:
         is_vocal = (not is_perc
                     and (bool(_VOCAL_NAME_RE.search(t.name or ""))
                          or 52 <= t.channel.instrument <= 54))  # GM choir/voice programs
+        is_bass = (not is_perc and not is_vocal
+                   and _classify_bass(t.name or "", t.channel.instrument))
         tuning = [s.value for s in t.strings]
         measures: List[GPMeasure] = []
         abs_beat = 0.0
@@ -168,6 +200,7 @@ def _from_pyguitarpro(path: str) -> GPSong:
             is_percussion=is_perc,
             tuning=tuning,
             is_vocal=is_vocal,
+            is_bass=is_bass,
             measures=measures,
         ))
 
@@ -294,6 +327,7 @@ def _from_gpif(path: str) -> GPSong:
         is_perc = "Percussion" in instr_type or bool(_DRUM_NAME_RE.search(name))
         is_vocal = (not is_perc
                     and (bool(_VOCAL_NAME_RE.search(name)) or instr_type.lower() == "voice"))
+        is_bass = not is_perc and not is_vocal and _classify_bass(name, gm)
         # Drum-kit articulation index -> output MIDI note (percussion notes reference
         # this instead of String/Fret/Midi properties). Non-percussion tracks also have
         # an InstrumentSet/Elements tree (used for notation), so only consult this for
@@ -302,7 +336,8 @@ def _from_gpif(path: str) -> GPSong:
                        for a in tr.findall(".//InstrumentSet/Elements/Element/Articulations/Articulation")]
                       if is_perc else [])
         track_meta.append({"name": name, "gm": gm, "tuning_low_high": tuning_lh,
-                            "perc": is_perc, "vocal": is_vocal, "artic_midi": artic_midi})
+                            "perc": is_perc, "vocal": is_vocal, "bass": is_bass,
+                            "artic_midi": artic_midi})
 
     masterbars = root.findall("./MasterBars/MasterBar")
     out_tracks: List[GPTrack] = []
@@ -348,7 +383,7 @@ def _from_gpif(path: str) -> GPSong:
             measures.append(GPMeasure(time_sig=(num, den), beats=mbeats))
         out_tracks.append(GPTrack(
             name=meta["name"], gm_program=meta["gm"], is_percussion=meta["perc"],
-            tuning=tuning, is_vocal=meta["vocal"], measures=measures,
+            tuning=tuning, is_vocal=meta["vocal"], is_bass=meta["bass"], measures=measures,
         ))
 
     # Section markers: a <Section> child of a MasterBar names that bar (Intro, Verse, ...).

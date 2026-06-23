@@ -13,8 +13,8 @@ what each section means and how to apply it in a composition.*
 | Key / scale | Bb natural minor (Aeolian)  (100% scale-fit (heuristic)) |
 | Main time signature | 4/4 |
 | Other meters | none |
-| Lowest note | Bb0 |
-| Lowest open string | Bb0  (down-tuned) |
+| Lowest note (guitar) | Bb1 |
+| Lowest open string (guitar) | Bb1  (down-tuned) |
 | Notes per bar | 10.19 |
 | Voicing | power-chord driven |
 | Structure | 78 bars, 8 unique (repetition 90%; top bar repeats 20x) |
@@ -24,7 +24,7 @@ what each section means and how to apply it in a composition.*
 - **Key / scale:** Bb natural minor (Aeolian) (100% scale-fit (heuristic)).
 - **Most-used pitch classes:** 1 (Bb), b3 (Db), 4 (Eb), 5 (F), b7 (Ab), 2 (C).
 - **Voicing:** power-chord driven — 130 power-chord hits vs 0 triads
-  across 605 single notes.
+  across 284 single notes.
 - **Interval color (within chords):** tritone ×0, minor-2nd
   ×0, fifth ×271.
 
@@ -125,6 +125,63 @@ convention below (with `|` marking each barline).
 - **Onset grid (16th notes, `|` = barline):** `X.....X.X...X.X.`
 - **Coverage:** ~27% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
 
+## Bass
+
+Measured from the `Tim Bagshaw - Electric Bass (finger)` track, analyzed separately from the guitar
+riff above so a bass line that diverges from it (different syncopation, a walking
+passage, a fill) isn't averaged away into the combined harmony/register stats.
+
+| Trait | Value |
+|-------|-------|
+| Range | Bb0–Bb1 |
+| Lowest open string | Bb0  (down-tuned) |
+| Voicing | single-note line — 0 power-chord hits / 0 triads / 321 single notes |
+| Structure | 86 bars, 4 unique (repetition 95%; top bar repeats 40x) |
+
+### Bass riff A — 4 bars, repeats 39x (4/4)
+
+```python
+[
+    {"pitch": "Bb0", "duration": "d4"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Bb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Db1", "duration": "d4"},
+    {"pitch": "Eb1", "duration": "8"},
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "Eb1", "duration": "d4"},
+    {"pitch": "Bb0", "duration": "d4"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Bb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Db1", "duration": "d4"},
+    {"pitch": "Eb1", "duration": "8"},
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "Eb1", "duration": "d4"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 1 -> 1 -> 1 -> 1 -> b3 -> 4 -> 4 -> 1 -> 1 -> 1 -> 1 -> 1 -> b3 -> 4 -> 4
+- **Onset grid (16th notes, `|` = barline):** `X.....X.X...X.X. | X.....X...X..... | X.....X.X...X.X. | X.....X...X.....`
+
+### Bass pedal / root center — 1 bar, repeats 40x (4/4)
+
+```python
+[
+    {"pitch": "Bb0", "duration": "d4"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Bb1", "duration": "4"},
+    {"pitch": "Bb0", "duration": "8"},
+    {"pitch": "Bb0", "duration": "8"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 1 -> 1 -> 1 -> 1
+- **Onset grid (16th notes, `|` = barline):** `X.....X.X...X.X.`
+- **Coverage:** ~48% of bars sit on this drone.
+
 ## Rhythm & pacing
 
 - **Note density:** 10.19 notes per bar.
@@ -180,6 +237,6 @@ Flow: Intro → Verse 1 → Verse 2 → Chorus → Transition to Funeralopolis.
 |-------|---------------|---------|------|
 | Jus Oborn - Distortion Guitar | distortion-guitar | 30 | pitched |
 | Jus Oborn - Overdriven Guitar | overdriven-guitar | 29 | pitched |
-| Tim Bagshaw - Electric Bass (finger) | electric-bass-finger | 33 | pitched |
+| Tim Bagshaw - Electric Bass (finger) | electric-bass-finger | 33 | bass |
 | Mark Greening - Drums 1 | drum kit (ch.10) | — | percussion |
 | Mark Greening - Drums 2 | drum kit (ch.10) | — | percussion |

@@ -71,6 +71,12 @@ def analyze_one(path, dump_json, out_dir=None):
                if pedal else "")
         print(f"  riffs: {widths}{ped}")
 
+    bass = features.get("bass")
+    if bass:
+        b_riffs = bass.get("riffs") or []
+        b_widths = ", ".join(f"{r['bars']}-bar x{r['repeats']}" for r in b_riffs[:2]) or "none"
+        print(f"  bass: {bass['range_low']}-{bass['range_high']} | riffs: {b_widths}")
+
     voc = features.get("vocals")
     if voc:
         print(f"  vocals: {voc['track_name'][:28]} | range {voc['range_low']}–{voc['range_high']} | "

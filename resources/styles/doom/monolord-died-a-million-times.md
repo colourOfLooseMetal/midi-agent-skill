@@ -13,8 +13,8 @@ what each section means and how to apply it in a composition.*
 | Key / scale | B Phrygian  (78% scale-fit (heuristic)) |
 | Main time signature | 2/1 |
 | Other meters | 4/4, 1/1, 3/1 |
-| Lowest note | B0 |
-| Lowest open string | B0  (down-tuned) |
+| Lowest note (guitar) | B1 |
+| Lowest open string (guitar) | B1  (down-tuned) |
 | Notes per bar | 1.16 |
 | Voicing | power-chord driven |
 | Structure | 54 bars, 24 unique (repetition 56%; top bar repeats 12x) |
@@ -24,7 +24,7 @@ what each section means and how to apply it in a composition.*
 - **Key / scale:** B Phrygian (78% scale-fit (heuristic)).
 - **Most-used pitch classes:** 1 (B), 5 (Gb), b2 (C), 2 (Db), b3 (D), b6 (G).
 - **Voicing:** power-chord driven — 96 power-chord hits vs 0 triads
-  across 126 single notes.
+  across 14 single notes.
 - **Interval color (within chords):** tritone ×0, minor-2nd
   ×0, fifth ×198.
 
@@ -134,6 +134,67 @@ convention below (with `|` marking each barline).
 - **Onset grid (16th notes, `|` = barline):** `X...............`
 - **Coverage:** ~9% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
 
+## Bass
+
+Measured from the `Mika Häkki - Electric Bass (finger)` track, analyzed separately from the guitar
+riff above so a bass line that diverges from it (different syncopation, a walking
+passage, a fill) isn't averaged away into the combined harmony/register stats.
+
+| Trait | Value |
+|-------|-------|
+| Range | B0–Eb2 |
+| Lowest open string | B0  (down-tuned) |
+| Voicing | single-note line — 0 power-chord hits / 0 triads / 112 single notes |
+| Structure | 52 bars, 22 unique (repetition 58%; top bar repeats 23x) |
+
+### Bass riff A — 4 bars, repeats 2x (4/4)
+
+```python
+[
+    {"pitch": "F1", "duration": "8"},
+    {"pitch": "E1", "duration": "8"},
+    {"pitch": "F1", "duration": "4"},
+    {"pitch": "C1", "duration": "8"},
+    {"pitch": "D1", "duration": "8"},
+    {"pitch": "C1", "duration": "4"},
+    {"pitch": "B0", "duration": "1"},
+    {"pitch": "R", "duration": "1"},
+    {"pitch": "R", "duration": "1"}
+]
+```
+
+- **Scale-degree sequence:** b5 -> 4 -> b5 -> b2 -> b3 -> b2 -> 1
+- **Onset grid (16th notes, `|` = barline):** `X.X.X...X.X.X... | X............... | ................ | ................`
+
+### Bass riff B — 1 bar, repeats 1x (1/1)
+
+```python
+[
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "R", "duration": "8"},
+    {"pitch": "R", "duration": "d8"},
+    {"pitch": "F1", "duration": "8"},
+    {"pitch": "E1", "duration": "8"},
+    {"pitch": "F1", "duration": "d8"},
+    {"pitch": "C1", "duration": "8"}
+]
+```
+
+- **Scale-degree sequence:** b5 -> 4 -> b5 -> b2
+- **Onset grid (16th notes, `|` = barline):** `.......X.X.X..X.`
+
+### Bass pedal / root center — 1 bar, repeats 3x (4/4)
+
+```python
+[
+    {"pitch": "B0", "duration": "1"}
+]
+```
+
+- **Scale-degree sequence:** 1
+- **Onset grid (16th notes, `|` = barline):** `X...............`
+- **Coverage:** ~12% of bars sit on this drone.
+
 ## Rhythm & pacing
 
 - **Note density:** 1.16 notes per bar.
@@ -157,4 +218,4 @@ convention below (with `|` marking each barline).
 |-------|---------------|---------|------|
 | Thomas V Jäger - Distortion Guitar | distortion-guitar | 30 | pitched |
 | Thomas V Jäger - Electric Guitar (clean) | electric-guitar-clean | 27 | pitched |
-| Mika Häkki - Electric Bass (finger) | electric-bass-finger | 33 | pitched |
+| Mika Häkki - Electric Bass (finger) | electric-bass-finger | 33 | bass |

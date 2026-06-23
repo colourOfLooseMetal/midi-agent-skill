@@ -115,23 +115,42 @@ def estimate_key(pc_weights: Dict[int, float]) -> Optional[Dict]:
     return best
 
 
-def _representative_track(song: GPSong) -> Optional[GPTrack]:
-    """The pitched track with the most note-bearing beats -- the main riff carrier.
+def _guitar_tracks(song: GPSong) -> List[GPTrack]:
+    """Pitched tracks that are neither vocal nor bass -- the guitar/lead pool.
 
-    Vocal tracks are excluded here so a busy sung line is never picked as "the riff";
-    they get their own analysis in `_analyze_vocals`.
+    Kept separate from bass so harmony/register/voicing stats describe the guitar
+    specifically instead of being diluted by the bass's mostly-root, mostly
+    single-note line (see `_analyze_bass` for the bass's own equivalent stats).
     """
-    pitched = [t for t in song.pitched_tracks() if not t.is_vocal] or song.pitched_tracks()
+    return [t for t in song.pitched_tracks() if not t.is_vocal and not t.is_bass]
+
+
+def _representative_track(song: GPSong) -> Optional[GPTrack]:
+    """The guitar track with the most note-bearing beats -- the main riff carrier.
+
+    Vocal and bass tracks are excluded here so a busy sung line or bass line is never
+    picked as "the riff"; they get their own analysis in `_analyze_vocals` /
+    `_analyze_bass`.
+    """
+    pitched = _guitar_tracks(song) or song.pitched_tracks()
     if not pitched:
         return None
     return max(pitched, key=lambda t: sum(1 for _, b in t.iter_beats() if b.pitches))
 
 
-def _interval_stats(song: GPSong) -> Dict:
-    """Vertical (chord) interval prevalence + chord-shape classification."""
+def _representative_bass_track(song: GPSong) -> Optional[GPTrack]:
+    """The bass track with the most note-bearing beats -- the main bass line carrier."""
+    bass = song.bass_tracks()
+    if not bass:
+        return None
+    return max(bass, key=lambda t: sum(1 for _, b in t.iter_beats() if b.pitches))
+
+
+def _interval_stats(tracks: List[GPTrack]) -> Dict:
+    """Vertical (chord) interval prevalence + chord-shape classification over `tracks`."""
     tritone = minor2 = fifth = 0
     chord_beats = power_chords = triads = single_notes = rest_beats = 0
-    for t in song.pitched_tracks():
+    for t in tracks:
         for _, b in t.iter_beats():
             if b.is_rest or not b.pitches:
                 rest_beats += 1
@@ -405,6 +424,41 @@ def _analyze_vocals(song: GPSong, root_pc: Optional[int]) -> Optional[Dict]:
     }
 
 
+def _analyze_bass(song: GPSong, root_pc: Optional[int]) -> Optional[Dict]:
+    """Bass-specific range/voicing/riff/structure profile, mirroring the guitar analysis.
+
+    Bass tracks used to be folded into the same "representative track" pool as
+    guitar; since guitar almost always has more note events, bass could never win
+    that pick and its own line (a different syncopation, a walking passage, a fill
+    the guitar doesn't play) never showed up anywhere in the card. This runs the same
+    riff/structure/register/voicing pipeline guitar gets, kept separate.
+    """
+    track = _representative_bass_track(song)
+    if track is None:
+        return None
+    tracks = song.bass_tracks()
+    pitches = [p for t in tracks for _, b in t.iter_beats() for p in b.pitches]
+    if not pitches:
+        return None
+    low, high = min(pitches), max(pitches)
+    lowest_tuning = min((min(t.tuning) for t in tracks if t.tuning), default=None)
+    intervals = _interval_stats(tracks)
+    structure = _structure(track)
+    riff_data = _top_riffs(track, root_pc, n=2)
+    return {
+        "track_name": track.name,
+        "range_low": _midi_name(low),
+        "range_high": _midi_name(high),
+        "lowest_open_string": _midi_name(lowest_tuning),
+        "down_tuned": lowest_tuning is not None and lowest_tuning < 40,  # below E2
+        **intervals,
+        "structure": structure,
+        "riffs": riff_data["riffs"],
+        "pedal": riff_data["pedal"],
+        "pedal_ratio": riff_data["pedal_ratio"],
+    }
+
+
 def _arrangement(song: GPSong, total_bars: int) -> List[Dict]:
     """Section markers -> an ordered song map with 1-based bar ranges."""
     if not song.sections:
@@ -524,17 +578,20 @@ def analyze(song: GPSong) -> Dict:
             timesig_hist[f"{m.time_sig[0]}/{m.time_sig[1]}"] += 1
             total_bars += 1
 
-    # register / down-tuning signal
-    all_pitches = [p for t in song.pitched_tracks() for _, b in t.iter_beats() for p in b.pitches]
+    # register / down-tuning signal -- scoped to guitar tracks (bass gets its own
+    # register in _analyze_bass) so the two aren't averaged together.
+    guitar_tracks = _guitar_tracks(song)
+    all_pitches = [p for t in guitar_tracks for _, b in t.iter_beats() for p in b.pitches]
     lowest = min(all_pitches) if all_pitches else None
     highest = max(all_pitches) if all_pitches else None
-    lowest_tuning = min((min(t.tuning) for t in song.pitched_tracks() if t.tuning), default=None)
+    lowest_tuning = min((min(t.tuning) for t in guitar_tracks if t.tuning), default=None)
 
-    intervals = _interval_stats(song)
+    intervals = _interval_stats(guitar_tracks)
     structure = _structure(rep)
     root_pc = key["root"] if key else None
     riff_data = _top_riffs(rep, root_pc, n=3)
     vocals = _analyze_vocals(song, root_pc)
+    bass = _analyze_bass(song, root_pc)
     total_bars_all = max((len(t.measures) for t in song.tracks), default=0)
     arrangement = _arrangement(song, total_bars_all)
     pc_degrees = ({PITCH_CLASSES[pc]: degree_label(root_pc, pc) for pc in pc_weights}
@@ -580,7 +637,7 @@ def analyze(song: GPSong) -> Dict:
         },
         "instrumentation": [
             {"name": t.name, "gm_program": t.gm_program,
-             "percussion": t.is_percussion, "vocal": t.is_vocal}
+             "percussion": t.is_percussion, "vocal": t.is_vocal, "bass": t.is_bass}
             for t in song.tracks
         ],
         "percussion": _analyze_percussion(song),
@@ -588,6 +645,7 @@ def analyze(song: GPSong) -> Dict:
         "pedal": riff_data["pedal"],
         "pedal_ratio": riff_data["pedal_ratio"],
         "vocals": vocals,
+        "bass": bass,
         "arrangement": arrangement,
     }
 

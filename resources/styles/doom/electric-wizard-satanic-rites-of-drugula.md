@@ -13,8 +13,8 @@ what each section means and how to apply it in a composition.*
 | Key / scale | Db Phrygian  (100% scale-fit (heuristic)) |
 | Main time signature | 4/4 |
 | Other meters | none |
-| Lowest note | B0 |
-| Lowest open string | B0  (down-tuned) |
+| Lowest note (guitar) | B1 |
+| Lowest open string (guitar) | B1  (down-tuned) |
 | Notes per bar | 25.45 |
 | Voicing | power-chord driven |
 | Structure | 96 bars, 36 unique (repetition 62%; top bar repeats 12x) |
@@ -24,7 +24,7 @@ what each section means and how to apply it in a composition.*
 - **Key / scale:** Db Phrygian (100% scale-fit (heuristic)).
 - **Most-used pitch classes:** 1 (Db), 5 (Ab), b3 (E), b6 (A), 4 (Gb), b7 (B).
 - **Voicing:** power-chord driven — 789 power-chord hits vs 0 triads
-  across 1292 single notes.
+  across 466 single notes.
 - **Interval color (within chords):** tritone ×1, minor-2nd
   ×1, fifth ×1144.
 
@@ -160,6 +160,115 @@ convention below (with `|` marking each barline).
 - **Onset grid (16th notes, `|` = barline):** `XXXXXXXXXXXXXXX.`
 - **Coverage:** ~3% of bars sit on this drone — it's the root the riffs above move against, not a riff itself.
 
+## Bass
+
+Measured from the `Electric Bass (finger)` track, analyzed separately from the guitar
+riff above so a bass line that diverges from it (different syncopation, a walking
+passage, a fill) isn't averaged away into the combined harmony/register stats.
+
+| Trait | Value |
+|-------|-------|
+| Range | B0–Db2 |
+| Lowest open string | B0  (down-tuned) |
+| Voicing | single-note line — 0 power-chord hits / 0 triads / 649 single notes |
+| Structure | 88 bars, 7 unique (repetition 92%; top bar repeats 18x) |
+
+### Bass riff A — 4 bars, repeats 16x (4/4)
+
+```python
+[
+    {"pitch": "Db2", "duration": "4"},
+    {"pitch": "Db2", "duration": "d8"},
+    {"pitch": "Db2", "duration": "8"},
+    {"pitch": "A1", "duration": "16"},
+    {"pitch": "A1", "duration": "8"},
+    {"pitch": "A1", "duration": "8"},
+    {"pitch": "A1", "duration": "8"},
+    {"pitch": "Gb1", "duration": "4"},
+    {"pitch": "Gb1", "duration": "d8"},
+    {"pitch": "Gb1", "duration": "8"},
+    {"pitch": "D1", "duration": "16"},
+    {"pitch": "D1", "duration": "8"},
+    {"pitch": "D1", "duration": "4"},
+    {"pitch": "Db2", "duration": "4"},
+    {"pitch": "Db2", "duration": "d8"},
+    {"pitch": "Db2", "duration": "8"},
+    {"pitch": "A1", "duration": "16"},
+    {"pitch": "A1", "duration": "8"},
+    {"pitch": "A1", "duration": "8"},
+    {"pitch": "A1", "duration": "8"},
+    {"pitch": "Gb1", "duration": "4"},
+    {"pitch": "Gb1", "duration": "d8"},
+    {"pitch": "Gb1", "duration": "8"},
+    {"pitch": "D1", "duration": "16"},
+    {"pitch": "D1", "duration": "8"},
+    {"pitch": "D1", "duration": "4"}
+]
+```
+
+- **Scale-degree sequence:** 1 -> 1 -> 1 -> b6 -> b6 -> b6 -> b6 -> 4 -> 4 -> 4 -> b2 -> b2 -> b2 -> 1 -> 1 -> 1 -> b6 -> b6 -> b6 -> b6 -> 4 -> 4 -> 4 -> b2 -> b2 -> b2
+- **Onset grid (16th notes, `|` = barline):** `X...X..X.XX.X.X. | X...X..X.XX.X... | X...X..X.XX.X.X. | X...X..X.XX.X...`
+
+### Bass riff B — 4 bars, repeats 15x (4/4)
+
+```python
+[
+    {"pitch": "B0", "duration": "16"},
+    {"pitch": "Db1", "duration": "d8"},
+    {"pitch": "Db1", "duration": "d8"},
+    {"pitch": "Db1", "duration": "16"},
+    {"pitch": "B0", "duration": "16"},
+    {"pitch": "Db1", "duration": "16"},
+    {"pitch": "Db1", "duration": "8"},
+    {"pitch": "B0", "duration": "16"},
+    {"pitch": "Db1", "duration": "16"},
+    {"pitch": "Db1", "duration": "8"},
+    {"pitch": "E1", "duration": "4"},
+    {"pitch": "E1", "duration": "d8"},
+    {"pitch": "E1", "duration": "16"},
+    {"pitch": "E1", "duration": "16"},
+    {"pitch": "Eb1", "duration": "16"},
+    {"pitch": "Eb1", "duration": "8"},
+    {"pitch": "Eb1", "duration": "16"},
+    {"pitch": "E1", "duration": "16"},
+    {"pitch": "E1", "duration": "8"},
+    {"pitch": "B0", "duration": "16"},
+    {"pitch": "Db1", "duration": "d8"},
+    {"pitch": "Db1", "duration": "d8"},
+    {"pitch": "Db1", "duration": "16"},
+    {"pitch": "B0", "duration": "16"},
+    {"pitch": "Db1", "duration": "16"},
+    {"pitch": "Db1", "duration": "8"},
+    {"pitch": "B0", "duration": "16"},
+    {"pitch": "Db1", "duration": "16"},
+    {"pitch": "Db1", "duration": "8"},
+    {"pitch": "E1", "duration": "4"},
+    {"pitch": "E1", "duration": "d8"},
+    {"pitch": "E1", "duration": "16"},
+    {"pitch": "E1", "duration": "16"},
+    {"pitch": "Eb1", "duration": "16"},
+    {"pitch": "Eb1", "duration": "8"},
+    {"pitch": "Eb1", "duration": "16"},
+    {"pitch": "E1", "duration": "16"},
+    {"pitch": "E1", "duration": "8"}
+]
+```
+
+- **Scale-degree sequence:** b7 -> 1 -> 1 -> 1 -> b7 -> 1 -> 1 -> b7 -> 1 -> 1 -> b3 -> b3 -> b3 -> b3 -> 2 -> 2 -> 2 -> b3 -> b3 -> b7 -> 1 -> 1 -> 1 -> b7 -> 1 -> 1 -> b7 -> 1 -> 1 -> b3 -> b3 -> b3 -> b3 -> 2 -> 2 -> 2 -> b3 -> b3
+- **Onset grid (16th notes, `|` = barline):** `XX..X..XXXX.XXX. | X...X..XXXX.XXX. | XX..X..XXXX.XXX. | X...X..XXXX.XXX.`
+
+### Bass pedal / root center — 1 bar, repeats 1x (4/4)
+
+```python
+[
+    {"pitch": "Db2", "duration": "1"}
+]
+```
+
+- **Scale-degree sequence:** 1
+- **Onset grid (16th notes, `|` = barline):** `X...............`
+- **Coverage:** ~1% of bars sit on this drone.
+
 ## Rhythm & pacing
 
 - **Note density:** 25.45 notes per bar.
@@ -292,5 +401,5 @@ Flow: Intro → Lead → Verse → Chorus → Verse → Chorus → Solo 1 → Ch
 | Vocals - Alto Sax | alto-sax | 65 | vocal |
 | Lead - Distortion Guitar | distortion-guitar | 30 | pitched |
 | Rhythm  - Distortion Guitar | distortion-guitar | 30 | pitched |
-| Electric Bass (finger) | electric-bass-finger | 33 | pitched |
+| Electric Bass (finger) | electric-bass-finger | 33 | bass |
 | Percussion - Drums | drum kit (ch.10) | — | percussion |
